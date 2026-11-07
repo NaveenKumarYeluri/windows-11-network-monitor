@@ -1,0 +1,14 @@
+{
+  "adapterMode": "Auto",
+  "pollIntervalMs": 1000,
+  "showTrayIcon": true,
+  "showTaskbarHud": true,
+  "showGraph": true,
+  "includeVirtualAdapters": false,
+  "startWithWindows": false,
+  "darkMode": true,
+  "graphWindowSeconds": 60,
+  "downloadColor": "#0078D4",
+  "uploadColor": "#D83B01",
+  "hudDock": "Bottom"
+}

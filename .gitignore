@@ -1,0 +1,45 @@
+# .NET
+bin/
+obj/
+out/
+*.user
+*.suo
+*.csproj.user
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Visual Studio
+.vs/
+*.userprefs
+
+# Build outputs
+TestResults/
+*.trx
+*.log
+publish/
+app.publish/
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# OS / Editor
+.DS_Store
+.vscode/settings.json
+.idea/
+*.swp
+*~
+
+# Binaries (GitHub Releases hold these)
+*.zip
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle
+!docs/**/*.png
+!docs/**/*.jpg
+
+# Local settings
+appsettings.local.json

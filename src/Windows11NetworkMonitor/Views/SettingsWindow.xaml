@@ -1,0 +1,36 @@
+<Window
+    x:Class="Windows11NetworkMonitor.Views.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Settings"
+    Width="620" Height="560"
+    MinWidth="500" MinHeight="420">
+
+    <ScrollViewer Margin="24" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="14" MaxWidth="560">
+
+            <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" />
+
+            <StackPanel Spacing="6">
+                <TextBlock Text="Adapter mode (Auto / Combined / specific)" FontWeight="SemiBold" />
+                <TextBox x:Name="AdapterModeBox" PlaceholderText="Auto" />
+            </StackPanel>
+
+            <StackPanel Spacing="6">
+                <TextBlock Text="Poll interval (ms)" FontWeight="SemiBold" />
+                <NumberBox x:Name="PollIntervalBox" Minimum="250" Maximum="5000" SpinButtonPlacementMode="Inline" />
+            </StackPanel>
+
+            <CheckBox x:Name="ShowTrayCheck" Content="Show tray icon" />
+            <CheckBox x:Name="ShowHudCheck" Content="Show taskbar HUD" />
+            <CheckBox x:Name="ShowGraphCheck" Content="Show graph" />
+            <CheckBox x:Name="IncludeVirtualCheck" Content="Include virtual adapters (VPN / VMware)" />
+            <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows" />
+            <CheckBox x:Name="DarkModeCheck" Content="Dark mode" />
+
+            <Button x:Name="SaveButton" Content="Save" HorizontalAlignment="Left" Click="SaveButton_Click" />
+            <TextBlock x:Name="StatusText" Opacity="0.7" />
+
+        </StackPanel>
+    </ScrollViewer>
+</Window>

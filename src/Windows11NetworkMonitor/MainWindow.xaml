@@ -1,0 +1,131 @@
+<Window
+    x:Class="Windows11NetworkMonitor.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008/2006"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Windows 11 Network Monitor"
+    Width="1180" Height="640"
+    MinWidth="900" MinHeight="520">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Navigation -->
+        <NavigationView x:Name="Nav" Grid.Column="0" IsBackEnabled="False" IsSettingsEnabled="True"
+                        PaneDisplayMode="Left" SelectionChanged="Nav_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="Dashboard" Tag="Dashboard" />
+                <NavigationViewItem Content="Adapters" Tag="Adapters" />
+                <NavigationViewItem Content="Statistics" Tag="Statistics" />
+            </NavigationView.MenuItems>
+            <NavigationView.Header>
+                <StackPanel Padding="16">
+                    <TextBlock Text="Network Monitor" FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="Windows 11 Network Monitor" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                </StackPanel>
+            </NavigationView.Header>
+        </NavigationView>
+
+        <!-- Main content -->
+        <ScrollViewer Grid.Column="1" Margin="24" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="16" MaxWidth="900">
+
+                <!-- Live speed cards -->
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" CornerRadius="12" Padding="20"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="DOWNLOAD" FontWeight="SemiBold" Opacity="0.7" />
+                            <TextBlock x:Name="DownText" Text="0.0 MB/s" FontSize="36" FontWeight="SemiBold" Foreground="#0078D4" />
+                            <TextBlock x:Name="AdapterText" Text="Auto" Opacity="0.7" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" CornerRadius="12" Padding="20"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="UPLOAD" FontWeight="SemiBold" Opacity="0.7" />
+                            <TextBlock x:Name="UpText" Text="0.0 MB/s" FontSize="36" FontWeight="SemiBold" Foreground="#D83B01" />
+                            <TextBlock x:Name="LatencyText" Text="Latency: -- ms" Opacity="0.7" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Graph -->
+                <Border CornerRadius="12" Padding="20"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Live graph (last 60 s)" FontWeight="SemiBold" />
+                        <Canvas x:Name="GraphCanvas" Height="180" Background="{ThemeResource LayerFillColorDefaultBrush}"
+                                CornerRadius="8" Tapped="GraphCanvas_Tapped">
+                            <Polyline x:Name="DownLine" Stroke="#0078D4" StrokeThickness="2" />
+                            <Polyline x:Name="UpLine" Stroke="#D83B01" StrokeThickness="2" />
+                        </Canvas>
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Ellipse Width="10" Height="10" Fill="#0078D4" VerticalAlignment="Center" />
+                                <TextBlock Text="Download" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Ellipse Width="10" Height="10" Fill="#D83B01" VerticalAlignment="Center" />
+                                <TextBlock Text="Upload" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Adapters -->
+                <Border CornerRadius="12" Padding="20"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Adapters (auto-detected)" FontWeight="SemiBold" />
+                        <ListView x:Name="AdapterList" SelectionMode="None" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Stats -->
+                <Border CornerRadius="12" Padding="20"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Statistics" FontWeight="SemiBold" />
+                        <Grid ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Spacing="2">
+                                <TextBlock Text="Session ↓ / ↑" Opacity="0.7" />
+                                <TextBlock x:Name="SessionText" Text="0 MB / 0 MB" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="2">
+                                <TextBlock Text="Today ↓ / ↑" Opacity="0.7" />
+                                <TextBlock x:Name="DailyText" Text="0 MB / 0 MB" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="2">
+                                <TextBlock Text="Peak ↓ / ↑ / Avg" Opacity="0.7" />
+                                <TextBlock x:Name="PeakText" Text="0 / 0 / 0" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
