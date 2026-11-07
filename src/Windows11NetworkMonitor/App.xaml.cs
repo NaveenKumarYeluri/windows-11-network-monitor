@@ -1,6 +1,5 @@
-using Microsoft.UI;
+using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
-using Microsoft.UI.Interop;
 using Microsoft.UI.Xaml;
 using Windows11NetworkMonitor.Models;
 using Windows11NetworkMonitor.Services;
@@ -9,6 +8,9 @@ namespace Windows11NetworkMonitor;
 
 public partial class App : Application
 {
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
     private static DispatcherQueue? _dispatcher;
     private static AppSettings? _settings;
     private static NetworkAdapterService? _adapterService;
@@ -28,7 +30,7 @@ public partial class App : Application
 
         _mainWindow = new MainWindow(_settings, _adapterService);
         _mainWindow.Activate();
-        var hwnd = _mainWindow.Content.XamlRoot.GetHandle();
+        var hwnd = GetForegroundWindow();
         _mainWindow.InitTray(hwnd);
 
         _ = _adapterService.RunAsync();

@@ -21,7 +21,7 @@ public sealed class TrayIconService : IDisposable
     private const uint WM_USER = 0x0400;
     private const uint WM_CONTEXTMENU = 0x00A3;
 
-    private static readonly uint WM_APP = 0x8000;
+    private const uint WM_APP = 0x8000;
     public const uint WM_TRAYICON = WM_APP + 1;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
