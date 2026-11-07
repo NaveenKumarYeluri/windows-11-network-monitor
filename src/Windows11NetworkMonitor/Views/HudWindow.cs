@@ -31,7 +31,6 @@ public sealed class HudWindow : Window
             Text = "↓ 0 B/s  ↑ 0 B/s",
             Foreground = new SolidColorBrush(Colors.White),
             FontSize = 11,
-            FontWeight = Microsoft.UI.Text.FontWeight.SemiBold,
             FontFamily = new FontFamily("Segoe UI")
         };
         root.Children.Add(_speedText);
@@ -43,7 +42,6 @@ public sealed class HudWindow : Window
         {
             presenter.IsAlwaysOnTop = true;
             presenter.IsResizable = false;
-            presenter.IsMovable = true;
             presenter.SetBorderAndTitleBar(false, false);
         }
 
