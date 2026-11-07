@@ -20,6 +20,14 @@ public sealed partial class SettingsWindow : Window
         InitializeComponent();
         Title = "Settings";
         AppWindow.Resize(new SizeInt32(620, 560));
+        try
+        {
+            AppWindow.SetPresenter(Microsoft.UI.Windowing.OverlappedPresenter.Create());
+            if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter p)
+                p.IsAlwaysOnTop = true;
+        }
+        catch { }
+        Activated += (_, _) => AppWindow.Move(new Windows.Graphics.PointInt32(Math.Max(0, AppWindow.Position.X), Math.Max(0, AppWindow.Position.Y)));
         LoadValues();
     }
 

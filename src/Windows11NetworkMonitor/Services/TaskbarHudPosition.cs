@@ -94,8 +94,8 @@ public static class TaskbarHudPosition
             case "Right":
                 pos = new Windows.Graphics.PointInt32(x + tw - size.Width - 8 + offsetX, y + 8 + offsetY);
                 break;
-            default: // Bottom (Windows 11) - dock at right, just left of system tray
-                pos = new Windows.Graphics.PointInt32(x + tw - size.Width - 160 + offsetX, y + Math.Max(0, (th - size.Height) / 2) + offsetY);
+            default: // Bottom (Windows 11) - dock at right, just left of system tray (clear of ^ overflow)
+                pos = new Windows.Graphics.PointInt32(x + tw - size.Width - 190 + offsetX, y + Math.Max(0, (th - size.Height) / 2) + offsetY);
                 break;
         }
         window.Move(pos);
