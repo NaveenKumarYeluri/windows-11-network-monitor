@@ -81,7 +81,7 @@ public static class TaskbarHudPosition
 
     public static void Dock(AppWindow window, string dock, int offsetX, int offsetY)
     {
-        var (x, y, tw, th, autoHide) = GetTaskbarBounds(window.Id, dock);
+        var (x, y, tw, th, _) = GetTaskbarBounds(IntPtr.Zero, dock);
         var size = window.Size;
         var pos = new Windows.Graphics.PointInt32();
 

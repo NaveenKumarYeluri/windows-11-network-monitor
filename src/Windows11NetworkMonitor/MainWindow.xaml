@@ -69,8 +69,8 @@
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <StackPanel Spacing="8">
                         <TextBlock Text="Live graph (last 60 s)" FontWeight="SemiBold" />
-                        <Canvas x:Name="GraphCanvas" Height="180" Background="{ThemeResource LayerFillColorDefaultBrush}"
-                                CornerRadius="8" Tapped="GraphCanvas_Tapped">
+                        <Canvas x:Name="GraphCanvas" Height="180"
+                                Tapped="GraphCanvas_Tapped">
                             <Polyline x:Name="DownLine" Stroke="#0078D4" StrokeThickness="2" />
                             <Polyline x:Name="UpLine" Stroke="#D83B01" StrokeThickness="2" />
                         </Canvas>

@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
-using Windows.Graphics;
+using Windows.Foundation;
 using Windows11NetworkMonitor.Models;
 using Windows11NetworkMonitor.Services;
 using Windows11NetworkMonitor.Views;

@@ -1,4 +1,6 @@
+using Microsoft.UI;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Interop;
 using Microsoft.UI.Xaml;
 using Windows11NetworkMonitor.Models;
 using Windows11NetworkMonitor.Services;
@@ -26,7 +28,8 @@ public partial class App : Application
 
         _mainWindow = new MainWindow(_settings, _adapterService);
         _mainWindow.Activate();
-        _mainWindow.InitTray(Microsoft.UI.Win32Interop.GetWindowIdFromWindow(_mainWindow));
+        var hwnd = _mainWindow.Content.XamlRoot.GetHandle();
+        _mainWindow.InitTray(hwnd);
 
         _ = _adapterService.RunAsync();
     }

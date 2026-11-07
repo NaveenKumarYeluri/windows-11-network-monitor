@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows11NetworkMonitor.Models;
+using Windows11NetworkMonitor.Services;
 
 namespace Windows11NetworkMonitor.Views;
 
@@ -58,7 +59,7 @@ public sealed class HudWindow : Window
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            _speedText.Text = $"↓ {Services.SpeedFormatter.Format(downBps)}  ↑ {Services.SpeedFormatter.Format(upBps)}";
+            _speedText.Text = $"↓ {SpeedFormatter.Format(downBps)}  ↑ {SpeedFormatter.Format(upBps)}";
         });
     }
 }
