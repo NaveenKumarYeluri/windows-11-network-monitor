@@ -22,6 +22,7 @@ public sealed partial class MainWindow : Window
 
     private TrayIconService? _tray;
     private HudWindow? _hud;
+    private SettingsWindow? _settingsWin;
 
     public MainWindow() : this(new AppSettings(), new NetworkAdapterService(new AppSettings()))
     {
@@ -137,8 +138,12 @@ public sealed partial class MainWindow : Window
 
     private void ShowSettings()
     {
-        var win = new SettingsWindow(_settings);
-        win.Activate();
+        if (_settingsWin is null)
+        {
+            _settingsWin = new SettingsWindow(_settings);
+            _settingsWin.Closed += (_, _) => _settingsWin = null;
+        }
+        _settingsWin.Activate();
     }
 
     private void MainWindow_Closed(object sender, WindowEventArgs e)
