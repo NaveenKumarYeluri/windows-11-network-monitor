@@ -108,14 +108,22 @@ public sealed partial class MainWindow : Window
 
     private void Nav_SelectionChanged(object sender, NavigationViewSelectionChangedEventArgs args)
     {
-        if (args.SelectedItem is NavigationViewItem item && item.Tag?.ToString() == "Dashboard")
-            return;
-        if (args.SelectedItem is NavigationViewItem item2 && item2.Tag?.ToString() == "Adapters")
+        if (args.SelectedItem is not NavigationViewItem item) return;
+        switch (item.Tag?.ToString())
         {
-            // stays on same page in v1; adapters list is below graph
-            return;
+            case "Dashboard":
+                MainScroll.ChangeView(null, 0, 1f);
+                break;
+            case "Adapters":
+                MainScroll.ChangeView(null, null, 1f, true);
+                break;
+            case "Statistics":
+                MainScroll.ChangeView(null, null, 1f, true);
+                break;
         }
     }
+
+    private void OpenSettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettings();
 
     private void GraphCanvas_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e) => ShowDetail();
 
