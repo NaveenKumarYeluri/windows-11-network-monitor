@@ -22,7 +22,7 @@ public sealed class HudWindow : Window
 
         var root = new Grid
         {
-            Background = new SolidColorBrush(new Microsoft.UI.Color { A = 180, R = 20, G = 20, B = 20 }),
+            Background = new SolidColorBrush(Colors.Black) { Opacity = 0.7 },
             Padding = new Thickness(10, 4, 10, 4)
         };
         _speedText = new TextBlock
