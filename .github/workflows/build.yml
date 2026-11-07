@@ -47,15 +47,15 @@ jobs:
           Get-ChildItem -Recurse "src/Windows11NetworkMonitor/obj" -Filter "XamlSaveStateFile.xml" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName -ErrorAction SilentlyContinue | Select-Object -First 300 }
 
       - name: Publish single-file
-        run: msbuild src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj /p:Configuration=Release /p:Platform=x64 /p:RuntimeIdentifier=win-x64 /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:PublishDir=./publish/ /t:Publish /verbosity:m
+        run: msbuild src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj /p:Configuration=Release /p:Platform=x64 /p:RuntimeIdentifier=win-x64 /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:PublishDir=src/Windows11NetworkMonitor/publish/ /t:Publish /verbosity:m
 
       - name: List publish output
         if: always()
-        run: Get-ChildItem -Recurse ./publish -ErrorAction SilentlyContinue | Format-Table FullName
+        run: Get-ChildItem -Recurse src/Windows11NetworkMonitor/publish -ErrorAction SilentlyContinue | Format-Table FullName
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Windows11NetworkMonitor-${{ matrix.rid }}-${{ github.sha }}
-          path: ./publish/
+          path: src/Windows11NetworkMonitor/publish/
           if-no-files-found: error

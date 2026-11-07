@@ -65,11 +65,11 @@ public sealed partial class AppSettings : ObservableObject
     public void ResetDailyIfNeeded()
     {
         var today = DateOnly.FromDateTime(DateTime.Now);
-        if (dailyDate != today)
+        if (DailyDate != today)
         {
-            dailyDate = today;
-            dailyDownloadBytes = 0;
-            dailyUploadBytes = 0;
+            DailyDate = today;
+            DailyDownloadBytes = 0;
+            DailyUploadBytes = 0;
         }
     }
 }
