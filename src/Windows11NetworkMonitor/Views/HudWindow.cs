@@ -36,6 +36,7 @@ public sealed class HudWindow : Window
             Padding = new Thickness(6, 2, 6, 2),
             ColumnSpacing = 8
         };
+        root.Tapped += (_, _) => parent.Activate();
         _speedText = new TextBlock
         {
             Text = "↓ 0 B/s  ↑ 0 B/s",

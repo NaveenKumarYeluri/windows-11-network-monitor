@@ -23,6 +23,7 @@ public sealed partial class MainWindow : Window
     private TrayIconService? _tray;
     private HudWindow? _hud;
     private SettingsWindow? _settingsWin;
+    private bool _exiting;
 
     public MainWindow() : this(new AppSettings(), new NetworkAdapterService(new AppSettings()))
     {
@@ -35,6 +36,7 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Title = "Windows 11 Network Monitor";
         AppWindow.Resize(new SizeInt32(1180, 640));
+        AppWindow.Closing += AppWindow_Closing;
         _adapters.Changed += OnSpeedChanged;
         Closed += MainWindow_Closed;
         _ = LatencyLoopAsync();
@@ -136,7 +138,7 @@ public sealed partial class MainWindow : Window
         Activate();
     }
 
-    private void ShowSettings()
+    public void ShowSettings()
     {
         if (_settingsWin is null)
         {
@@ -144,6 +146,21 @@ public sealed partial class MainWindow : Window
             _settingsWin.Closed += (_, _) => _settingsWin = null;
         }
         _settingsWin.Activate();
+    }
+
+    public void Shutdown()
+    {
+        _exiting = true;
+        AppWindow.Close();
+    }
+
+    private void AppWindow_Closing(AppWindow sender, Microsoft.UI.Xaml.WindowClosingEventArgs args)
+    {
+        if (!_exiting)
+        {
+            args.Cancel = true;
+            sender.Hide();
+        }
     }
 
     private void MainWindow_Closed(object sender, WindowEventArgs e)
