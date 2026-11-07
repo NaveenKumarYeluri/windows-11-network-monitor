@@ -27,6 +27,13 @@
                     <Button x:Name="OpenSettingsButton" Content="Settings" Margin="0,10,0,0" Click="OpenSettingsButton_Click" />
                 </StackPanel>
             </NavigationView.Header>
+            <NavigationView.Footer>
+                <NavigationViewItem Content="Settings" Tag="Settings">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Setting" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.Footer>
         </NavigationView>
 
         <!-- Main content -->

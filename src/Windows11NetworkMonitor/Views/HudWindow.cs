@@ -36,6 +36,14 @@ public sealed class HudWindow : Window
         Content = root;
 
         AppWindow.Resize(new Windows.Graphics.SizeInt32(220, 32));
+        AppWindow.SetPresenter(OverlappedPresenter.Create());
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.IsAlwaysOnTop = true;
+            presenter.IsResizable = false;
+            presenter.IsMovable = true;
+            presenter.SetBorderAndTitleBar(false, false);
+        }
 
         _repositionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _repositionTimer.Tick += (_, _) => Reposition();

@@ -60,9 +60,8 @@ public static class TaskbarHudPosition
         SHAppBarMessage(ABM_GETTASKBARPOS, ref pos);
 
         var mon = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
-        MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY);
-        // Get primary work area as fallback
-        GetMonitorInfo(IntPtr.Zero, ref mon);
+        var hMonitor = MonitorFromWindow(hwnd == IntPtr.Zero ? IntPtr.Zero : hwnd, MONITOR_DEFAULTTOPRIMARY);
+        GetMonitorInfo(hMonitor, ref mon);
 
         RECT rc = pos.rc;
         int w = rc.Right - rc.Left;
@@ -71,7 +70,6 @@ public static class TaskbarHudPosition
         // Taskbar height is typically 40-48 dip; if ABM fails, assume bottom 48px
         if (w == 0 && h == 0)
         {
-            int workH = mon.rcWork.Bottom - mon.rcWork.Top;
             h = 48;
             rc = new RECT { Left = mon.rcWork.Left, Top = mon.rcWork.Bottom, Right = mon.rcWork.Right, Bottom = mon.rcWork.Bottom + h };
         }

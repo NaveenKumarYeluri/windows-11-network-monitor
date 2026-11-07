@@ -120,6 +120,9 @@ public sealed partial class MainWindow : Window
             case "Statistics":
                 MainScroll.ChangeView(null, (float)StatsSection.ActualOffset.Y, 1f, true);
                 break;
+            case "Settings":
+                ShowSettings();
+                break;
         }
     }
 
