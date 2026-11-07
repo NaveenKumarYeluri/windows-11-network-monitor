@@ -1,7 +1,10 @@
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
+using Windows.Graphics;
 using Windows11NetworkMonitor.Models;
 using Windows11NetworkMonitor.Services;
 using Windows11NetworkMonitor.Views;
@@ -26,6 +29,7 @@ public sealed partial class MainWindow : Window
         _adapters = adapters;
         InitializeComponent();
         Title = "Windows 11 Network Monitor";
+        AppWindow.Resize(new SizeInt32(1180, 640));
         _adapters.Changed += OnSpeedChanged;
         Closed += MainWindow_Closed;
         _ = LatencyLoopAsync();

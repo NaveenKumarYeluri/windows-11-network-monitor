@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using Windows.Graphics;
 using Windows11NetworkMonitor.Models;
 using Windows11NetworkMonitor.Services;
 
@@ -14,6 +15,7 @@ public sealed partial class SettingsWindow : Window
         _settings = settings;
         InitializeComponent();
         Title = "Settings";
+        AppWindow.Resize(new SizeInt32(620, 560));
         LoadValues();
     }
 

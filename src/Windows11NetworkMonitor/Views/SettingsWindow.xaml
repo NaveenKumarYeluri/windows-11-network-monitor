@@ -2,9 +2,7 @@
     x:Class="Windows11NetworkMonitor.Views.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Settings"
-    Width="620" Height="560"
-    MinWidth="500" MinHeight="420">
+    Title="Settings">
 
     <ScrollViewer Margin="24" VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="14" MaxWidth="560">

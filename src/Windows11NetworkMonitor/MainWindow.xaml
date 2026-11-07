@@ -5,9 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008/2006"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="Windows 11 Network Monitor"
-    Width="1180" Height="640"
-    MinWidth="900" MinHeight="520">
+    Title="Windows 11 Network Monitor">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.ColumnDefinitions>
