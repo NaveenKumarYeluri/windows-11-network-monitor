@@ -46,8 +46,8 @@ jobs:
           Write-Host "=== XamlSaveStateFile ==="
           Get-ChildItem -Recurse "src/Windows11NetworkMonitor/obj" -Filter "XamlSaveStateFile.xml" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName -ErrorAction SilentlyContinue | Select-Object -First 300 }
 
-      - name: Publish single-file self-contained
-        run: msbuild src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj /p:Configuration=Release /p:Platform=x64 /p:RuntimeIdentifier=win-x64 /p:SelfContained=true /p:WindowsAppSDKSelfContained=true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:PublishDir=./publish/ /t:Publish /verbosity:m
+      - name: Publish self-contained folder
+        run: msbuild src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj /p:Configuration=Release /p:Platform=x64 /p:RuntimeIdentifier=win-x64 /p:SelfContained=true /p:WindowsAppSDKSelfContained=true /p:PublishDir=./publish/ /t:Publish /verbosity:m
 
       - name: List publish output
         if: always()
