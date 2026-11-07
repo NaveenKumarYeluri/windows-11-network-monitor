@@ -151,7 +151,7 @@ public sealed partial class MainWindow : Window
     public void Shutdown()
     {
         _exiting = true;
-        AppWindow.Close();
+        Close();
     }
 
     private void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
