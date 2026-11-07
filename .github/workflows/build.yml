@@ -23,6 +23,13 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Verify SDK (must be 8.x via global.json)
+        run: |
+          dotnet --list-sdks
+          dotnet --version
+          $v = dotnet --version
+          if ($v -notmatch '^8\.') { throw "Expected .NET 8 SDK but got $v — check global.json" }
+
       - name: Restore
         run: dotnet restore Windows11NetworkMonitor.sln
 
