@@ -115,10 +115,10 @@ public sealed partial class MainWindow : Window
                 MainScroll.ChangeView(null, 0, 1f);
                 break;
             case "Adapters":
-                MainScroll.ChangeView(null, null, 1f, true);
+                MainScroll.ChangeView(null, (float)AdaptersSection.ActualOffset.Y, 1f, true);
                 break;
             case "Statistics":
-                MainScroll.ChangeView(null, null, 1f, true);
+                MainScroll.ChangeView(null, (float)StatsSection.ActualOffset.Y, 1f, true);
                 break;
         }
     }
