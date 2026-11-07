@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: windows-2022
     strategy:
       matrix:
         configuration: [ Release ]
@@ -34,7 +34,7 @@ jobs:
         run: dotnet restore Windows11NetworkMonitor.sln
 
       - name: Build
-        run: dotnet build Windows11NetworkMonitor.sln --configuration ${{ matrix.configuration }} --no-restore --nologo -v m -p:UseXamlCompilerExecutable=false
+        run: dotnet build Windows11NetworkMonitor.sln --configuration ${{ matrix.configuration }} --no-restore --nologo -v m
 
       - name: Dump XAML diagnostics (on failure)
         if: failure()
@@ -50,7 +50,7 @@ jobs:
           if ($tests) { dotnet test Windows11NetworkMonitor.sln --configuration ${{ matrix.configuration }} --no-build --nologo } else { Write-Host "No test projects found, skipping." }
 
       - name: Publish single-file
-        run: dotnet publish src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj --configuration Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:UseXamlCompilerExecutable=false -o ./publish --nologo -v m
+        run: dotnet publish src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj --configuration Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish --nologo -v m
 
       - name: List publish output
         if: always()
