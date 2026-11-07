@@ -24,7 +24,7 @@
                 <NavigationViewItem Content="Statistics" Tag="Statistics" />
             </NavigationView.MenuItems>
             <NavigationView.Header>
-                <StackPanel Padding="16">
+                <StackPanel Padding="16,16,16,16">
                     <TextBlock Text="Network Monitor" FontSize="18" FontWeight="SemiBold" />
                     <TextBlock Text="Windows 11 Network Monitor" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
                 </StackPanel>

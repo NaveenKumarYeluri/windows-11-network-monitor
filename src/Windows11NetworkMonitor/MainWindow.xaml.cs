@@ -98,7 +98,7 @@ public sealed partial class MainWindow : Window
             _latencyMs = await WifiService.PingAsync();
     }
 
-    private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    private void Nav_SelectionChanged(object sender, NavigationViewSelectionChangedEventArgs args)
     {
         if (args.SelectedItem is NavigationViewItem item && item.Tag?.ToString() == "Dashboard")
             return;

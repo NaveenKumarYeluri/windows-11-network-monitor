@@ -1,45 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Platforms>x64</Platforms>
-    <Platform Condition="'$(Platform)' == ''">x64</Platform>
     <UseWinUI>true</UseWinUI>
     <WindowsPackageType>None</WindowsPackageType>
-    <EnableMsixTooling>false</EnableMsixTooling>
-    <!-- Suppress legacy win10-* RIDs injected by old WindowsAppSDK targets (NETSDK1083) -->
-    <KnownRuntimeIdentifiers Condition="'$(KnownRuntimeIdentifiers)' == ''">win-x64</KnownRuntimeIdentifiers>
-
     <ApplicationManifest>app.manifest</ApplicationManifest>
-
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>12</LangVersion>
-
     <RootNamespace>Windows11NetworkMonitor</RootNamespace>
     <AssemblyName>Windows11NetworkMonitor</AssemblyName>
-    <ApplicationId>Windows11NetworkMonitor.App</ApplicationId>
-    <ApplicationVersion>0.1.0.0</ApplicationVersion>
-
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <AppxDeploymentMode>SelfContained</AppxDeploymentMode>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250205002" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250310001" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
   </ItemGroup>
-
   <ItemGroup>
     <None Update="Assets\DefaultSettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
 </Project>

@@ -34,7 +34,12 @@ jobs:
         run: dotnet restore Windows11NetworkMonitor.sln
 
       - name: Build
-        run: dotnet build Windows11NetworkMonitor.sln --configuration ${{ matrix.configuration }} --no-restore --nologo -v m
+        run: dotnet build Windows11NetworkMonitor.sln --configuration ${{ matrix.configuration }} --no-restore --nologo -v d
+
+      - name: Dump XAML compiler output (on failure)
+        if: failure()
+        run: |
+          Get-ChildItem -Recurse "src/Windows11NetworkMonitor/obj" -Filter "output.json" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName }
 
       - name: Test (if present)
         run: |
