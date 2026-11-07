@@ -34,12 +34,15 @@ jobs:
         run: dotnet restore Windows11NetworkMonitor.sln
 
       - name: Build
-        run: dotnet build Windows11NetworkMonitor.sln --configuration ${{ matrix.configuration }} --no-restore --nologo -v m
+        run: dotnet build Windows11NetworkMonitor.sln --configuration ${{ matrix.configuration }} --no-restore --nologo -v m -p:UseXamlCompilerExecutable=false
 
       - name: Dump XAML diagnostics (on failure)
         if: failure()
         run: |
-          Get-ChildItem -Recurse "src/Windows11NetworkMonitor/obj" -Filter "*.json" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName -ErrorAction SilentlyContinue | Select-Object -First 200 }
+          Write-Host "=== output.json files ==="
+          Get-ChildItem -Recurse "src/Windows11NetworkMonitor/obj" -Filter "output.json" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName -ErrorAction SilentlyContinue }
+          Write-Host "=== XamlSaveStateFile ==="
+          Get-ChildItem -Recurse "src/Windows11NetworkMonitor/obj" -Filter "XamlSaveStateFile.xml" | ForEach-Object { Write-Host "=== $($_.FullName) ==="; Get-Content $_.FullName -ErrorAction SilentlyContinue | Select-Object -First 300 }
 
       - name: Test (if present)
         run: |
@@ -47,7 +50,7 @@ jobs:
           if ($tests) { dotnet test Windows11NetworkMonitor.sln --configuration ${{ matrix.configuration }} --no-build --nologo } else { Write-Host "No test projects found, skipping." }
 
       - name: Publish single-file
-        run: dotnet publish src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj --configuration Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish --nologo -v m
+        run: dotnet publish src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj --configuration Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:UseXamlCompilerExecutable=false -o ./publish --nologo -v m
 
       - name: List publish output
         if: always()
