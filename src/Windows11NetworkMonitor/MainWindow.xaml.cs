@@ -48,7 +48,7 @@ public sealed partial class MainWindow : Window
         if (_settings.ShowTaskbarHud)
         {
             _hud = new HudWindow(this, _settings);
-            _hud.Show();
+            _hud.Activate();
         }
     }
 

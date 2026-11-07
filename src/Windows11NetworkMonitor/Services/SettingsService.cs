@@ -6,15 +6,15 @@ namespace Windows11NetworkMonitor.Services;
 public sealed class SettingsService
 {
     private static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Windows11NetworkMonitor");
-    private static readonly string File = Path.Combine(Dir, "settings.json");
+    private static readonly string SettingsPath = Path.Combine(Dir, "settings.json");
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
 
     public AppSettings Load()
     {
         try
         {
-            if (!File.Exists(File)) return new AppSettings();
-            var json = File.ReadAllText(File);
+            if (!System.IO.File.Exists(SettingsPath)) return new AppSettings();
+            var json = System.IO.File.ReadAllText(SettingsPath);
             var loaded = JsonSerializer.Deserialize<AppSettings>(json, JsonOpts) ?? new AppSettings();
             loaded.ResetDailyIfNeeded();
             return loaded;
@@ -28,7 +28,7 @@ public sealed class SettingsService
     public void Save(AppSettings settings)
     {
         Directory.CreateDirectory(Dir);
-        File.WriteAllText(File, JsonSerializer.Serialize(settings, JsonOpts));
+        System.IO.File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, JsonOpts));
     }
 
     public void ApplyStartWithWindows(bool enable)
@@ -38,8 +38,8 @@ public sealed class SettingsService
         if (enable)
             key.SetValue("Windows11NetworkMonitor", Environment.ProcessPath ?? string.Empty);
         else
-            key.DeleteValue("Windows11NetworkMonitor", throwIfMissing: false);
+            key.DeleteValue("Windows11NetworkMonitor", false);
     }
 
-    public static string SettingsFilePath => File;
+    public static string SettingsFilePath => SettingsPath;
 }
