@@ -125,8 +125,6 @@ public sealed partial class MainWindow : Window
 
     private void OpenSettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettings();
 
-    private void Nav_SettingsSelected(NavigationView sender, NavigationViewNavigationHelperEventArgs args) => ShowSettings();
-
     private void GraphCanvas_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e) => ShowDetail();
 
     private void ShowDetail()
