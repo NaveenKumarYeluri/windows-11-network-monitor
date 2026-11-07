@@ -23,19 +23,21 @@ public sealed class HudWindow : Window
         var root = new Grid
         {
             Background = new SolidColorBrush(Colors.Black) { Opacity = 0.7 },
-            Padding = new Thickness(10, 4, 10, 4)
+            Padding = new Thickness(6, 2, 6, 2),
+            ColumnSpacing = 8
         };
         _speedText = new TextBlock
         {
             Text = "↓ 0 B/s  ↑ 0 B/s",
             Foreground = new SolidColorBrush(Colors.White),
-            FontSize = 12,
+            FontSize = 11,
+            FontWeight = Microsoft.UI.Text.FontWeight.SemiBold,
             FontFamily = new FontFamily("Segoe UI")
         };
         root.Children.Add(_speedText);
         Content = root;
 
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(220, 32));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(150, 28));
         AppWindow.SetPresenter(OverlappedPresenter.Create());
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
