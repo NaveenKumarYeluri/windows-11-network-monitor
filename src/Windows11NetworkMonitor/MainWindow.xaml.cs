@@ -23,6 +23,10 @@ public sealed partial class MainWindow : Window
     private TrayIconService? _tray;
     private HudWindow? _hud;
 
+    public MainWindow() : this(new AppSettings(), new NetworkAdapterService(new AppSettings()))
+    {
+    }
+
     public MainWindow(AppSettings settings, NetworkAdapterService adapters)
     {
         _settings = settings;

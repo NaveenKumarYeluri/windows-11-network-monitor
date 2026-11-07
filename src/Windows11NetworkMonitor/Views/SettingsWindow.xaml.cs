@@ -10,6 +10,10 @@ public sealed partial class SettingsWindow : Window
     private readonly AppSettings _settings;
     private readonly SettingsService _store = new();
 
+    public SettingsWindow() : this(new AppSettings())
+    {
+    }
+
     public SettingsWindow(AppSettings settings)
     {
         _settings = settings;
