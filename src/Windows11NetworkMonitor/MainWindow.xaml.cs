@@ -154,7 +154,7 @@ public sealed partial class MainWindow : Window
         AppWindow.Close();
     }
 
-    private void AppWindow_Closing(AppWindow sender, Microsoft.UI.Xaml.WindowClosingEventArgs args)
+    private void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         if (!_exiting)
         {
