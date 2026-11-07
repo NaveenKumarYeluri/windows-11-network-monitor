@@ -14,8 +14,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- Navigation -->
-        <NavigationView x:Name="Nav" Grid.Column="0" IsBackEnabled="False" IsSettingsEnabled="True"
-                        PaneDisplayMode="Left" SelectionChanged="Nav_SelectionChanged">
+        <NavigationView x:Name="Nav" Grid.Column="0" PaneDisplayMode="Left" SelectionChanged="Nav_SelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Dashboard" Tag="Dashboard" />
                 <NavigationViewItem Content="Adapters" Tag="Adapters" />
