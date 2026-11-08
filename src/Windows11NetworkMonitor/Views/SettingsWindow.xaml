@@ -12,7 +12,7 @@
             <StackPanel Spacing="6">
                 <TextBlock Text="Adapter mode" FontWeight="SemiBold" />
                 <ComboBox x:Name="AdapterModeCombo" PlaceholderText="Auto" IsEditable="True" MinWidth="280" HorizontalAlignment="Stretch" />
-                <TextBlock Text="Auto = auto-select the active connection (Wi-Fi / Ethernet). Combined = sum of all adapters. Or pick a specific adapter from the list. Click Save, then restart the app." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+                <TextBlock Text="Auto = auto-select. Combined = sum all. Or pick an adapter. Click Save, then restart." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
 
             <StackPanel Spacing="6">
@@ -20,12 +20,20 @@
                 <NumberBox x:Name="PollIntervalBox" Minimum="250" Maximum="5000" SpinButtonPlacementMode="Inline" />
             </StackPanel>
 
+            <StackPanel Spacing="6">
+                <TextBlock Text="Theme" FontWeight="SemiBold" />
+                <ComboBox x:Name="ThemeCombo" MinWidth="280" HorizontalAlignment="Stretch">
+                    <ComboBoxItem Content="System (follow Windows)" Tag="System" />
+                    <ComboBoxItem Content="Light" Tag="Light" />
+                    <ComboBoxItem Content="Dark" Tag="Dark" />
+                </ComboBox>
+            </StackPanel>
+
             <CheckBox x:Name="ShowTrayCheck" Content="Show tray icon" />
             <CheckBox x:Name="ShowHudCheck" Content="Show taskbar HUD" />
             <CheckBox x:Name="ShowGraphCheck" Content="Show graph" />
             <CheckBox x:Name="IncludeVirtualCheck" Content="Include virtual adapters (VPN / VMware)" />
             <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows" />
-            <CheckBox x:Name="DarkModeCheck" Content="Dark mode" />
 
             <Button x:Name="SaveButton" Content="Save" HorizontalAlignment="Left" Click="SaveButton_Click" />
             <TextBlock x:Name="StatusText" Opacity="0.7" />

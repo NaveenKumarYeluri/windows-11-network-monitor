@@ -42,7 +42,6 @@ public sealed class HudWindow : Window
 
         var root = new Grid
         {
-            Background = new SolidColorBrush(Colors.Black) { Opacity = 0.7 },
             Padding = new Thickness(6, 2, 6, 2),
             ColumnSpacing = 8
         };
@@ -50,12 +49,12 @@ public sealed class HudWindow : Window
         _speedText = new TextBlock
         {
             Text = "↓ 0 B/s  ↑ 0 B/s",
-            Foreground = new SolidColorBrush(Colors.White),
             FontSize = 11,
             FontFamily = new FontFamily("Segoe UI")
         };
         root.Children.Add(_speedText);
         Content = root;
+        ApplyTheme();
 
         AppWindow.Resize(new Windows.Graphics.SizeInt32(150, 28));
         AppWindow.SetPresenter(OverlappedPresenter.Create());
@@ -74,10 +73,34 @@ public sealed class HudWindow : Window
         Activated += (_, _) => Reposition();
     }
 
+    private void ApplyTheme()
+    {
+        var root = (Grid)Content;
+        var mode = string.IsNullOrWhiteSpace(_settings.ThemeMode) ? (_settings.DarkMode ? "Dark" : "System") : _settings.ThemeMode;
+        root.RequestedTheme = mode switch
+        {
+            "Dark" => ElementTheme.Dark,
+            "Light" => ElementTheme.Light,
+            _ => ElementTheme.Default
+        };
+
+        // Colors: Light = white bg / dark text, Dark = dark bg / white text, System follows ActualTheme
+        var resolved = root.ActualTheme;
+        var isDark = mode switch
+        {
+            "Dark" => true,
+            "Light" => false,
+            _ => resolved == ElementTheme.Dark
+        };
+        root.Background = new SolidColorBrush(isDark ? Colors.Black : Colors.White) { Opacity = isDark ? 0.7 : 0.85 };
+        _speedText.Foreground = new SolidColorBrush(isDark ? Colors.White : Colors.Black);
+    }
+
     private void Reposition()
     {
         try
         {
+            ApplyTheme();
             TaskbarHudPositionDock();
             // Re-assert TOPMOST (WinUI's IsAlwaysOnTop alone drops when other apps activate)
             var hwnd = FindWindow(null, "HUD");

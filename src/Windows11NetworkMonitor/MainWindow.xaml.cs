@@ -35,7 +35,7 @@ public sealed partial class MainWindow : Window
         _adapters = adapters;
         InitializeComponent();
         Title = "Windows 11 Network Monitor";
-        ((FrameworkElement)Content).RequestedTheme = _settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
+        ((FrameworkElement)Content).RequestedTheme = GetWantTheme();
         AppWindow.Resize(new SizeInt32(1180, 640));
         AppWindow.Closing += AppWindow_Closing;
         _adapters.Changed += OnSpeedChanged;
@@ -82,7 +82,7 @@ public sealed partial class MainWindow : Window
             DrawGraph();
 
             // Live-apply toggles + dark mode (settings save takes effect without restart)
-            var wantTheme = _settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
+            var wantTheme = GetWantTheme();
             if (((FrameworkElement)Content).RequestedTheme != wantTheme) ((FrameworkElement)Content).RequestedTheme = wantTheme;
             GraphSection.Visibility = _settings.ShowGraph ? Visibility.Visible : Visibility.Collapsed;
             if (_settings.ShowTrayIcon) { if (_tray is not null && !_tray.IsVisible) _tray.Show(); }
@@ -147,6 +147,17 @@ public sealed partial class MainWindow : Window
     }
 
     private void OpenSettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettings();
+
+    private ElementTheme GetWantTheme()
+    {
+        var mode = string.IsNullOrWhiteSpace(_settings.ThemeMode) ? (_settings.DarkMode ? "Dark" : "System") : _settings.ThemeMode;
+        return mode switch
+        {
+            "Dark" => ElementTheme.Dark,
+            "Light" => ElementTheme.Light,
+            _ => ElementTheme.Default // System
+        };
+    }
 
     private void GraphCanvas_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e) => ShowDetail();
 

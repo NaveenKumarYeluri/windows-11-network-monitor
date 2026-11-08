@@ -29,6 +29,9 @@ public sealed partial class AppSettings : ObservableObject
     private bool darkMode = false;
 
     [ObservableProperty]
+    private string themeMode = "System"; // System | Light | Dark
+
+    [ObservableProperty]
     private int graphWindowSeconds = 60;
 
     [ObservableProperty]

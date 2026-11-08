@@ -64,13 +64,15 @@ public sealed partial class SettingsWindow : Window
         }
         AdapterModeCombo.SelectedIndex = idx;
 
+        var theme = string.IsNullOrWhiteSpace(_settings.ThemeMode) ? (_settings.DarkMode ? "Dark" : "System") : _settings.ThemeMode;
+        ThemeCombo.SelectedIndex = theme switch { "Dark" => 2, "Light" => 1, _ => 0 };
+
         PollIntervalBox.Value = System.Math.Clamp(_settings.PollIntervalMs, 250, 5000);
         ShowTrayCheck.IsChecked = _settings.ShowTrayIcon;
         ShowHudCheck.IsChecked = _settings.ShowTaskbarHud;
         ShowGraphCheck.IsChecked = _settings.ShowGraph;
         IncludeVirtualCheck.IsChecked = _settings.IncludeVirtualAdapters;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
-        DarkModeCheck.IsChecked = _settings.DarkMode;
         StatusText.Text = $"Saved to {SettingsService.SettingsFilePath}";
     }
 
@@ -91,11 +93,12 @@ public sealed partial class SettingsWindow : Window
         _settings.ShowGraph = ShowGraphCheck.IsChecked == true;
         _settings.IncludeVirtualAdapters = IncludeVirtualCheck.IsChecked == true;
         _settings.StartWithWindows = StartWithWindowsCheck.IsChecked == true;
-        _settings.DarkMode = DarkModeCheck.IsChecked == true;
+        _settings.ThemeMode = ThemeCombo.SelectedIndex switch { 1 => "Light", 2 => "Dark", _ => "System" };
+        _settings.DarkMode = _settings.ThemeMode == "Dark";
 
         _store.Save(_settings);
         _store.ApplyStartWithWindows(_settings.StartWithWindows);
-        // Keep Settings dialog Light — MainWindow picks up DarkMode on its next tick
+        // Keep Settings dialog Light — MainWindow picks up ThemeMode on its next tick
         StatusText.Text = "Saved. Restart the app to apply poll interval / adapter.";
         AdapterModeCombo.Focus(FocusState.Programmatic);
     }
