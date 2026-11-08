@@ -148,11 +148,25 @@ public sealed partial class MainWindow : Window
                 break;
             case "Settings":
                 ShowSettings();
+                // Settings is a dialog, not a page — reset highlight so re-click can fire again (fixes "staying clicked")
+                foreach (var m in Nav.MenuItems)
+                {
+                    if (m is NavigationViewItem nvi && nvi.Tag?.ToString() == "Dashboard")
+                    {
+                        Nav.SelectedItem = nvi;
+                        break;
+                    }
+                }
                 break;
         }
     }
 
-    private void OpenSettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettings();
+    private void OpenSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        ShowSettings();
+        // Move focus off the button so it doesn't keep a persistent "pressed/focused" accent state
+        Nav.Focus(FocusState.Programmatic);
+    }
 
     private ElementTheme GetWantTheme()
     {
