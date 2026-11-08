@@ -37,13 +37,6 @@ public sealed partial class SettingsWindow : Window
         // Settings dialog stays Light so controls remain readable regardless of Main dark/light choice
         ((FrameworkElement)Content).RequestedTheme = ElementTheme.Light;
         AppWindow.Resize(new SizeInt32(620, 560));
-        try
-        {
-            AppWindow.SetPresenter(Microsoft.UI.Windowing.OverlappedPresenter.Create());
-            if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter p)
-                p.IsAlwaysOnTop = true;
-        }
-        catch { }
         LoadValues();
     }
 
@@ -116,10 +109,7 @@ public sealed partial class SettingsWindow : Window
             {
                 var hwnd = FindWindow(null, "Settings");
                 if (hwnd != IntPtr.Zero)
-                {
                     SetForegroundWindow(hwnd);
-                    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-                }
             }
             catch { }
         });
