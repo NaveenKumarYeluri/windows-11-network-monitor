@@ -107,12 +107,17 @@ public sealed partial class MainWindow : Window
             DailyText.Text = $"{SpeedFormatter.FormatBytes(_settings.DailyDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.DailyUploadBytes)}";
             PeakText.Text = $"{SpeedFormatter.Format(_history.PeakDownloadBps)} / {SpeedFormatter.Format(_history.PeakUploadBps)} / {SpeedFormatter.Format(_history.AvgDownloadBps)}";
             AdapterList.ItemsSource = all;
-            HistoryList.ItemsSource = _historyStore.Recent(7).Select(r => new { Date = r.Date.ToString("ddd MMM dd"), Down = SpeedFormatter.FormatBytes(r.Down) + " ↓", Up = SpeedFormatter.FormatBytes(r.Up) + " ↑" }).ToList();
-            TopAppsList.ItemsSource = _historyStore.TopApps(DateOnly.FromDateTime(DateTime.Now)).Take(5).Select(t => new { App = t.App, Down = SpeedFormatter.FormatBytes(t.Down) + " ↓", Up = SpeedFormatter.FormatBytes(t.Up) + " ↑" }).ToList();
+            // Throttle history lists — recreating them every 1s tick resets ListView scroll (can't see day 6/7)
+            if (_pollTick % 30 == 0)
+            {
+                HistoryList.ItemsSource = _historyStore.Recent(7).Select(r => new { Date = r.Date.ToString("ddd MMM dd"), Down = SpeedFormatter.FormatBytes(r.Down) + " ↓", Up = SpeedFormatter.FormatBytes(r.Up) + " ↑" }).ToList();
+                TopAppsList.ItemsSource = _historyStore.TopApps(DateOnly.FromDateTime(DateTime.Now)).Take(5).Select(t => new { App = t.App, Down = SpeedFormatter.FormatBytes(t.Down) + " ↓", Up = SpeedFormatter.FormatBytes(t.Up) + " ↑" }).ToList();
+            }
             try
             {
                 var appsNow = _perAppTracker.TrackPerApp ? _perAppTracker.Snapshot() : Array.Empty<AppUsage>();
-                AppList.ItemsSource = appsNow.Select(a => new { a.ProcessName, a.TcpConnections, a.UdpEndpoints, a.TotalConnections, Display = $"{a.ProcessName}  ({a.TcpConnections} TCP + {a.UdpEndpoints} UDP)" }).ToList();
+                if (!appsNow.SequenceEqual(AppList.ItemsSource as IEnumerable<AppUsage>))
+                    AppList.ItemsSource = appsNow.Select(a => new { a.ProcessName, a.TcpConnections, a.UdpEndpoints, a.TotalConnections, Display = $"{a.ProcessName}  ({a.TcpConnections} TCP + {a.UdpEndpoints} UDP)" }).ToList();
             }
             catch { }
             DrawGraph();
@@ -144,6 +149,12 @@ public sealed partial class MainWindow : Window
         var width = GraphCanvas.ActualWidth > 0 ? GraphCanvas.ActualWidth : 800;
         var height = GraphCanvas.ActualHeight > 0 ? GraphCanvas.ActualHeight : 180;
         var max = Math.Max(1, samples.Max(s => Math.Max(s.DownloadBps, s.UploadBps)));
+        var mid = max / 2;
+
+        // Y-axis indicators
+        MaxLabel.Text = SpeedFormatter.Format(max);
+        MidLabel.Text = SpeedFormatter.Format(mid);
+        MinLabel.Text = "0 B/s";
 
         DownLine.Points.Clear();
         UpLine.Points.Clear();

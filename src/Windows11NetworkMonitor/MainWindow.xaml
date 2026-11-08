@@ -67,11 +67,25 @@
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <StackPanel Spacing="8">
                         <TextBlock Text="Live graph (last 60 s)" FontWeight="SemiBold" />
-                        <Canvas x:Name="GraphCanvas" Height="180"
-                                Tapped="GraphCanvas_Tapped">
-                            <Polyline x:Name="DownLine" Stroke="#0078D4" StrokeThickness="2" />
-                            <Polyline x:Name="UpLine" Stroke="#D83B01" StrokeThickness="2" />
-                        </Canvas>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="64" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <!-- Y-axis labels -->
+                            <Grid Grid.Column="0">
+                                <TextBlock x:Name="MaxLabel" Text="0 B/s" FontSize="11" Opacity="0.7" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,0,8,0" />
+                                <TextBlock x:Name="MidLabel" Text="0 B/s" FontSize="11" Opacity="0.7" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
+                                <TextBlock x:Name="MinLabel" Text="0 B/s" FontSize="11" Opacity="0.7" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,0" />
+                            </Grid>
+                            <Canvas x:Name="GraphCanvas" Grid.Column="1" Height="180"
+                                    Tapped="GraphCanvas_Tapped">
+                                <Line X1="0" Y1="60" X2="800" Y2="60" Stroke="{ThemeResource CardStrokeColorDefaultBrush}" StrokeThickness="1" StrokeDashArray="4 4" />
+                                <Line X1="0" Y1="120" X2="800" Y2="120" Stroke="{ThemeResource CardStrokeColorDefaultBrush}" StrokeThickness="1" StrokeDashArray="4 4" />
+                                <Polyline x:Name="DownLine" Stroke="#0078D4" StrokeThickness="2" />
+                                <Polyline x:Name="UpLine" Stroke="#D83B01" StrokeThickness="2" />
+                            </Canvas>
+                        </Grid>
                         <StackPanel Orientation="Horizontal" Spacing="16">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <Ellipse Width="10" Height="10" Fill="#0078D4" VerticalAlignment="Center" />
