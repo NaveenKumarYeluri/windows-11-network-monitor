@@ -35,7 +35,7 @@ public sealed partial class MainWindow : Window
         _adapters = adapters;
         InitializeComponent();
         Title = "Windows 11 Network Monitor";
-        RequestedTheme = _settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
+        ((FrameworkElement)Content).RequestedTheme = _settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
         AppWindow.Resize(new SizeInt32(1180, 640));
         AppWindow.Closing += AppWindow_Closing;
         _adapters.Changed += OnSpeedChanged;
@@ -83,7 +83,7 @@ public sealed partial class MainWindow : Window
 
             // Live-apply toggles + dark mode (settings save takes effect without restart)
             var wantTheme = _settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
-            if (RequestedTheme != wantTheme) RequestedTheme = wantTheme;
+            if (((FrameworkElement)Content).RequestedTheme != wantTheme) ((FrameworkElement)Content).RequestedTheme = wantTheme;
             GraphSection.Visibility = _settings.ShowGraph ? Visibility.Visible : Visibility.Collapsed;
             if (_settings.ShowTrayIcon) { if (_tray is not null && !_tray.IsVisible) _tray.Show(); }
             else { _tray?.Hide(); }

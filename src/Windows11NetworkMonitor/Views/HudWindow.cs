@@ -72,7 +72,6 @@ public sealed class HudWindow : Window
         _repositionTimer.Start();
 
         Activated += (_, _) => Reposition();
-        Deactivated += (_, _) => Reposition();
     }
 
     private void Reposition()
