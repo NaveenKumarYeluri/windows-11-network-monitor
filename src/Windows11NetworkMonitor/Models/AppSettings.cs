@@ -26,7 +26,7 @@ public sealed partial class AppSettings : ObservableObject
     private bool startWithWindows = false;
 
     [ObservableProperty]
-    private bool darkMode = true;
+    private bool darkMode = false;
 
     [ObservableProperty]
     private int graphWindowSeconds = 60;

@@ -34,11 +34,14 @@ public sealed partial class SettingsWindow : Window
         _adapters = adapters;
         InitializeComponent();
         Title = "Settings";
-        ((FrameworkElement)Content).RequestedTheme = settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
+        // Settings dialog stays Light so controls remain readable regardless of Main dark/light choice
+        ((FrameworkElement)Content).RequestedTheme = ElementTheme.Light;
         AppWindow.Resize(new SizeInt32(620, 560));
         try
         {
             AppWindow.SetPresenter(Microsoft.UI.Windowing.OverlappedPresenter.Create());
+            if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter p)
+                p.IsAlwaysOnTop = true;
         }
         catch { }
         LoadValues();
@@ -99,7 +102,7 @@ public sealed partial class SettingsWindow : Window
 
         _store.Save(_settings);
         _store.ApplyStartWithWindows(_settings.StartWithWindows);
-        ((FrameworkElement)Content).RequestedTheme = _settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
+        // Keep Settings dialog Light — MainWindow picks up DarkMode on its next tick
         StatusText.Text = "Saved. Restart the app to apply poll interval / adapter.";
         AdapterModeCombo.Focus(FocusState.Programmatic);
     }

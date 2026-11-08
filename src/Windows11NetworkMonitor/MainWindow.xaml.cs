@@ -157,12 +157,10 @@ public sealed partial class MainWindow : Window
 
     public void ShowSettings()
     {
-        if (_settingsWin is null)
-        {
-            var adapters = _adapters.GetAdapters();
-            _settingsWin = new SettingsWindow(_settings, adapters);
-            _settingsWin.Closed += (_, _) => _settingsWin = null;
-        }
+        // Always create a fresh window - reusing a closed Window + Activate() silently does nothing
+        var adapters = _adapters.GetAdapters();
+        _settingsWin = new SettingsWindow(_settings, adapters);
+        _settingsWin.Closed += (_, _) => _settingsWin = null;
         _settingsWin.BringToFront();
     }
 
