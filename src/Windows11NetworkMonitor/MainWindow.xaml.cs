@@ -35,6 +35,7 @@ public sealed partial class MainWindow : Window
         _adapters = adapters;
         InitializeComponent();
         Title = "Windows 11 Network Monitor";
+        RequestedTheme = _settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
         AppWindow.Resize(new SizeInt32(1180, 640));
         AppWindow.Closing += AppWindow_Closing;
         _adapters.Changed += OnSpeedChanged;
@@ -79,6 +80,22 @@ public sealed partial class MainWindow : Window
             PeakText.Text = $"{SpeedFormatter.Format(_history.PeakDownloadBps)} / {SpeedFormatter.Format(_history.PeakUploadBps)} / {SpeedFormatter.Format(_history.AvgDownloadBps)}";
             AdapterList.ItemsSource = all;
             DrawGraph();
+
+            // Live-apply toggles + dark mode (settings save takes effect without restart)
+            var wantTheme = _settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
+            if (RequestedTheme != wantTheme) RequestedTheme = wantTheme;
+            GraphSection.Visibility = _settings.ShowGraph ? Visibility.Visible : Visibility.Collapsed;
+            if (_settings.ShowTrayIcon) { if (_tray is not null && !_tray.IsVisible) _tray.Show(); }
+            else { _tray?.Hide(); }
+            if (_settings.ShowTaskbarHud)
+            {
+                if (_hud is null) { _hud = new HudWindow(this, _settings); _hud.Activate(); }
+            }
+            else
+            {
+                if (_hud is not null) { _hud.Close(); _hud = null; }
+            }
+
             _tray?.Update(down, up);
             _hud?.Update(down, up);
         });

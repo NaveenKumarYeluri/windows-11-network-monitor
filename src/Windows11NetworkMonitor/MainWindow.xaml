@@ -62,7 +62,7 @@
                 </Grid>
 
                 <!-- Graph -->
-                <Border CornerRadius="12" Padding="20"
+                <Border x:Name="GraphSection" CornerRadius="12" Padding="20"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <StackPanel Spacing="8">

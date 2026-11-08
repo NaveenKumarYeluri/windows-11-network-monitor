@@ -47,6 +47,7 @@ public sealed class TrayIconService : IDisposable
     private readonly uint _id = 1;
     private Icon? _icon;
     private bool _added;
+    public bool IsVisible => _added;
 
     public event Action? Clicked;
     public event Action? RightClick;
@@ -56,8 +57,22 @@ public sealed class TrayIconService : IDisposable
         _hwnd = hwnd;
     }
 
+    public void Hide()
+    {
+        if (!_added) return;
+        var data = new NOTIFYICONDATA
+        {
+            cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
+            hWnd = _hwnd,
+            uID = _id,
+        };
+        Shell_NotifyIcon(1 /* NIM_DELETE */, ref data);
+        _added = false;
+    }
+
     public void Show()
     {
+        if (_added) return;
         var data = new NOTIFYICONDATA
         {
             cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),

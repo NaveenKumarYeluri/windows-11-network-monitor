@@ -34,6 +34,7 @@ public sealed partial class SettingsWindow : Window
         _adapters = adapters;
         InitializeComponent();
         Title = "Settings";
+        RequestedTheme = settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
         AppWindow.Resize(new SizeInt32(620, 560));
         try
         {
@@ -98,6 +99,7 @@ public sealed partial class SettingsWindow : Window
 
         _store.Save(_settings);
         _store.ApplyStartWithWindows(_settings.StartWithWindows);
+        RequestedTheme = _settings.DarkMode ? ElementTheme.Dark : ElementTheme.Light;
         StatusText.Text = "Saved. Restart the app to apply poll interval / adapter.";
         AdapterModeCombo.Focus(FocusState.Programmatic);
     }
