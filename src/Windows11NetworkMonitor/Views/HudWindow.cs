@@ -67,26 +67,12 @@ public sealed class HudWindow : Window
             presenter.SetBorderAndTitleBar(false, false);
         }
 
-        Activated += (_, _) =>
-        {
-            Reposition();
-            try
-            {
-                var hwnd = FindWindow(null, "HUD");
-                if (hwnd != IntPtr.Zero)
-                {
-                    var ex = GetWindowLong(hwnd, GWL_EXSTYLE);
-                    SetWindowLong(hwnd, GWL_EXSTYLE, ex | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
-                }
-            }
-            catch { }
-        };
-
-        _repositionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _repositionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _repositionTimer.Tick += (_, _) => Reposition();
         _repositionTimer.Start();
 
         Activated += (_, _) => Reposition();
+        Deactivated += (_, _) => Reposition();
     }
 
     private void Reposition()
@@ -97,7 +83,11 @@ public sealed class HudWindow : Window
             // Re-assert TOPMOST (WinUI's IsAlwaysOnTop alone drops when other apps activate)
             var hwnd = FindWindow(null, "HUD");
             if (hwnd != IntPtr.Zero)
+            {
+                var ex = GetWindowLong(hwnd, GWL_EXSTYLE);
+                SetWindowLong(hwnd, GWL_EXSTYLE, ex | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
                 SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+            }
         }
         catch { }
     }

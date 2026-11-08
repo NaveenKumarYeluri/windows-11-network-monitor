@@ -146,7 +146,7 @@ public sealed partial class MainWindow : Window
             _settingsWin = new SettingsWindow(_settings, adapters);
             _settingsWin.Closed += (_, _) => _settingsWin = null;
         }
-        _settingsWin.Activate();
+        _settingsWin.BringToFront();
     }
 
     public void Shutdown()
