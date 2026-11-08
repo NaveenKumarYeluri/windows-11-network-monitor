@@ -7,19 +7,18 @@ namespace Windows11NetworkMonitor.Services;
 
 /// <summary>
 /// Win32 system tray icon (Shell_NotifyIcon) with custom-drawn speed text.
-/// Windows 11 has no taskbar control API, so text is baked into the icon image.
+/// Windows 11 hides new icons under ^ (overflow) until you promote them - the
+/// icon is still working even when it looks "not working" at first glance.
 /// </summary>
 public sealed class TrayIconService : IDisposable
 {
     private const uint NIM_ADD = 0;
     private const uint NIM_MODIFY = 2;
+    private const uint NIM_DELETE = 1;
     private const uint NIF_ICON = 0x1;
     private const uint NIF_MESSAGE = 0x4;
     private const uint NIF_TIP = 0x8;
     private const uint NIM_SETVERSION = 4;
-    private const uint NOTIFYICON_VERSION_4 = 4;
-    private const uint WM_USER = 0x0400;
-    private const uint WM_CONTEXTMENU = 0x00A3;
 
     private const uint WM_APP = 0x8000;
     public const uint WM_TRAYICON = WM_APP + 1;
@@ -35,13 +34,19 @@ public sealed class TrayIconService : IDisposable
         public IntPtr hIcon;
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
         public string szTip;
+        public uint dwState;
+        public uint dwStateMask;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string szInfo;
+        public uint uTimeout;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string szInfoTitle;
+        public uint dwInfoFlags;
+        public Guid guidItem;
     }
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATA lpData);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
 
     private readonly IntPtr _hwnd;
     private readonly uint _id = 1;
@@ -66,7 +71,7 @@ public sealed class TrayIconService : IDisposable
             hWnd = _hwnd,
             uID = _id,
         };
-        Shell_NotifyIcon(1 /* NIM_DELETE */, ref data);
+        Shell_NotifyIcon(NIM_DELETE, ref data);
         _added = false;
     }
 
@@ -90,6 +95,7 @@ public sealed class TrayIconService : IDisposable
 
     public void Update(double downBps, double upBps)
     {
+        if (!_added) return;
         var (down, _) = SplitShort(downBps);
         var text = $"↓{down} ↑{SplitShort(upBps).down}";
         var icon = DrawIcon(text);
@@ -133,22 +139,12 @@ public sealed class TrayIconService : IDisposable
     public void HandleCallback(uint msg, IntPtr wParam)
     {
         if (msg == 0x0202 /* WM_LBUTTONUP */) Clicked?.Invoke();
-        if (msg == WM_CONTEXTMENU || wParam.ToInt64() == 0x0205 /* WM_RBUTTONUP */) RightClick?.Invoke();
+        if (wParam.ToInt64() == 0x0205 /* WM_RBUTTONUP */) RightClick?.Invoke();
     }
 
     public void Dispose()
     {
-        if (_added)
-        {
-            var data = new NOTIFYICONDATA
-            {
-                cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
-                hWnd = _hwnd,
-                uID = _id,
-            };
-            Shell_NotifyIcon(1 /* NIM_DELETE */, ref data);
-            _added = false;
-        }
+        Hide();
         _icon?.Dispose();
     }
 }

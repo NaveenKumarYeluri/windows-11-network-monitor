@@ -15,6 +15,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly AppSettings _settings;
     private readonly NetworkAdapterService _adapters;
+    private readonly HistoryStore _historyStore = new();
     private readonly SpeedHistory _history = new();
     private readonly PeriodicTimer _latencyTimer = new(TimeSpan.FromSeconds(3));
     private double _lastDown, _lastUp;
@@ -33,6 +34,8 @@ public sealed partial class MainWindow : Window
     {
         _settings = settings;
         _adapters = adapters;
+        _historyStore.Load();
+        _historyStore.Prune(_settings.HistoryRetentionDays);
         InitializeComponent();
         Title = "Windows 11 Network Monitor";
         ((FrameworkElement)Content).RequestedTheme = GetWantTheme();
@@ -46,7 +49,7 @@ public sealed partial class MainWindow : Window
     public void InitTray(IntPtr hwnd)
     {
         _tray = new TrayIconService(hwnd);
-        _tray.Show();
+        if (_settings.ShowTrayIcon) _tray.Show();
         _tray.Clicked += () => DispatcherQueue.TryEnqueue(() => ShowDetail());
         _tray.RightClick += () => DispatcherQueue.TryEnqueue(() => ShowSettings());
         if (_settings.ShowTaskbarHud)
@@ -63,8 +66,11 @@ public sealed partial class MainWindow : Window
 
         _settings.SessionDownloadBytes += (long)(down * _settings.PollIntervalMs / 1000);
         _settings.SessionUploadBytes += (long)(up * _settings.PollIntervalMs / 1000);
-        _settings.DailyDownloadBytes += (long)(down * _settings.PollIntervalMs / 1000);
-        _settings.DailyUploadBytes += (long)(up * _settings.PollIntervalMs / 1000);
+        var downDelta = (long)(down * _settings.PollIntervalMs / 1000);
+        var upDelta = (long)(up * _settings.PollIntervalMs / 1000);
+        _historyStore.AddDelta(downDelta, upDelta);
+        _settings.DailyDownloadBytes += downDelta;
+        _settings.DailyUploadBytes += upDelta;
         _settings.ResetDailyIfNeeded();
 
         _history.Add(new SpeedSample { DownloadBps = down, UploadBps = up });

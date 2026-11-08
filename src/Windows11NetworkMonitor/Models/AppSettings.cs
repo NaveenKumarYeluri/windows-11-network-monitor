@@ -32,6 +32,9 @@ public sealed partial class AppSettings : ObservableObject
     private string themeMode = "System"; // System | Light | Dark
 
     [ObservableProperty]
+    private int historyRetentionDays = 90;
+
+    [ObservableProperty]
     private int graphWindowSeconds = 60;
 
     [ObservableProperty]

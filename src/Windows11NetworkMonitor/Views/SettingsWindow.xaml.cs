@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using Windows.Graphics;
 using Windows11NetworkMonitor.Models;
@@ -8,18 +7,6 @@ namespace Windows11NetworkMonitor.Views;
 
 public sealed partial class SettingsWindow : Window
 {
-    [DllImport("user32.dll")]
-    private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
-
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-    private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
-    private const uint SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_SHOWWINDOW = 0x0040;
-
     private readonly AppSettings _settings;
     private readonly IReadOnlyList<NetworkAdapterInfo> _adapters;
     private readonly SettingsService _store = new();
@@ -37,6 +24,11 @@ public sealed partial class SettingsWindow : Window
         // Settings dialog stays Light so controls remain readable regardless of Main dark/light choice
         ((FrameworkElement)Content).RequestedTheme = ElementTheme.Light;
         AppWindow.Resize(new SizeInt32(620, 560));
+        try
+        {
+            AppWindow.SetPresenter(Microsoft.UI.Windowing.OverlappedPresenter.Create());
+        }
+        catch { }
         LoadValues();
     }
 
@@ -68,6 +60,7 @@ public sealed partial class SettingsWindow : Window
         ThemeCombo.SelectedIndex = theme switch { "Dark" => 2, "Light" => 1, _ => 0 };
 
         PollIntervalBox.Value = System.Math.Clamp(_settings.PollIntervalMs, 250, 5000);
+        HistoryRetentionBox.Value = System.Math.Clamp(_settings.HistoryRetentionDays, 0, 365);
         ShowTrayCheck.IsChecked = _settings.ShowTrayIcon;
         ShowHudCheck.IsChecked = _settings.ShowTaskbarHud;
         ShowGraphCheck.IsChecked = _settings.ShowGraph;
@@ -88,6 +81,7 @@ public sealed partial class SettingsWindow : Window
 
         var interval = (int)Math.Round(PollIntervalBox.Value);
         _settings.PollIntervalMs = System.Math.Clamp(interval, 250, 5000);
+        _settings.HistoryRetentionDays = System.Math.Clamp((int)Math.Round(HistoryRetentionBox.Value), 0, 365);
         _settings.ShowTrayIcon = ShowTrayCheck.IsChecked == true;
         _settings.ShowTaskbarHud = ShowHudCheck.IsChecked == true;
         _settings.ShowGraph = ShowGraphCheck.IsChecked == true;
@@ -106,15 +100,5 @@ public sealed partial class SettingsWindow : Window
     public void BringToFront()
     {
         Activate();
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            try
-            {
-                var hwnd = FindWindow(null, "Settings");
-                if (hwnd != IntPtr.Zero)
-                    SetForegroundWindow(hwnd);
-            }
-            catch { }
-        });
     }
 }
