@@ -129,6 +129,52 @@
                                 <TextBlock x:Name="PeakText" Text="0 / 0 / 0" />
                             </StackPanel>
                         </Grid>
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Recent history (last 7 days)" FontWeight="SemiBold" />
+                            <ListView x:Name="HistoryList" SelectionMode="None" MaxHeight="180">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="12">
+                                            <TextBlock Text="{Binding Date}" />
+                                            <TextBlock Text="{Binding Down}" Opacity="0.8" />
+                                            <TextBlock Text="{Binding Up}" Opacity="0.8" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                            <TextBlock Text="Top app today:" FontWeight="SemiBold" />
+                            <ListView x:Name="TopAppsList" SelectionMode="None" MaxHeight="120">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="12">
+                                            <TextBlock Text="{Binding App}" />
+                                            <TextBlock Text="{Binding Down}" Opacity="0.8" />
+                                            <TextBlock Text="{Binding Up}" Opacity="0.8" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Apps -->
+                <Border x:Name="AppsSection" CornerRadius="12" Padding="20"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Apps using network now" FontWeight="SemiBold" />
+                        <ListView x:Name="AppList" SelectionMode="None">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="{Binding ProcessName}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding TotalConnections}" Opacity="0.7" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                        <TextBlock Text="Estimated by live connections — for byte-accurate counts Windows runs a WFP callout driver (admin), out of scope for this build." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
 

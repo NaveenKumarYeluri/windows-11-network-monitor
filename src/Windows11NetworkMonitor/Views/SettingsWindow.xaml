@@ -38,6 +38,7 @@
             <CheckBox x:Name="ShowTrayCheck" Content="Show tray icon" />
             <CheckBox x:Name="ShowHudCheck" Content="Show taskbar HUD" />
             <CheckBox x:Name="ShowGraphCheck" Content="Show graph" />
+            <CheckBox x:Name="TrackPerAppCheck" Content="Track per-app usage (estimated)" />
             <CheckBox x:Name="IncludeVirtualCheck" Content="Include virtual adapters (VPN / VMware)" />
             <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows" />
 

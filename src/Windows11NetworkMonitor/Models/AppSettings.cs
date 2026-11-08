@@ -35,6 +35,9 @@ public sealed partial class AppSettings : ObservableObject
     private int historyRetentionDays = 90;
 
     [ObservableProperty]
+    private bool trackPerApp = true;
+
+    [ObservableProperty]
     private int graphWindowSeconds = 60;
 
     [ObservableProperty]

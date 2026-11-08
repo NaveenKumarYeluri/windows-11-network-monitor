@@ -16,7 +16,9 @@ public sealed partial class MainWindow : Window
     private readonly AppSettings _settings;
     private readonly NetworkAdapterService _adapters;
     private readonly HistoryStore _historyStore = new();
+    private readonly PerAppTracker _perAppTracker = new();
     private readonly SpeedHistory _history = new();
+    private int _pollTick;
     private readonly PeriodicTimer _latencyTimer = new(TimeSpan.FromSeconds(3));
     private double _lastDown, _lastUp;
     private long _latencyMs = -1;
@@ -72,6 +74,26 @@ public sealed partial class MainWindow : Window
         _settings.DailyDownloadBytes += downDelta;
         _settings.DailyUploadBytes += upDelta;
         _settings.ResetDailyIfNeeded();
+        _perAppTracker.TrackPerApp = _settings.TrackPerApp;
+
+        // Every 5th tick, attribute this tick's bytes to visible apps (approx. by connection count)
+        if (++_pollTick % 5 == 0 && _settings.TrackPerApp)
+        {
+            try
+            {
+                var apps = _perAppTracker.Snapshot();
+                var totalConns = apps.Sum(a => a.TotalConnections);
+                if (totalConns > 0)
+                {
+                    foreach (var a in apps)
+                    {
+                        var share = (double)a.TotalConnections / totalConns;
+                        _historyStore.AddPerAppDelta(a.ProcessName, (long)(downDelta * share), (long)(upDelta * share));
+                    }
+                }
+            }
+            catch { }
+        }
 
         _history.Add(new SpeedSample { DownloadBps = down, UploadBps = up });
 
@@ -85,6 +107,14 @@ public sealed partial class MainWindow : Window
             DailyText.Text = $"{SpeedFormatter.FormatBytes(_settings.DailyDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.DailyUploadBytes)}";
             PeakText.Text = $"{SpeedFormatter.Format(_history.PeakDownloadBps)} / {SpeedFormatter.Format(_history.PeakUploadBps)} / {SpeedFormatter.Format(_history.AvgDownloadBps)}";
             AdapterList.ItemsSource = all;
+            HistoryList.ItemsSource = _historyStore.Recent(7).Select(r => new { Date = r.Date.ToString("ddd MMM dd"), Down = SpeedFormatter.FormatBytes(r.Down) + " ↓", Up = SpeedFormatter.FormatBytes(r.Up) + " ↑" }).ToList();
+            TopAppsList.ItemsSource = _historyStore.TopApps(DateOnly.FromDateTime(DateTime.Now)).Take(5).Select(t => new { App = t.App, Down = SpeedFormatter.FormatBytes(t.Down) + " ↓", Up = SpeedFormatter.FormatBytes(t.Up) + " ↑" }).ToList();
+            try
+            {
+                var appsNow = _perAppTracker.TrackPerApp ? _perAppTracker.Snapshot() : Array.Empty<AppUsage>();
+                AppList.ItemsSource = appsNow.Select(a => new { a.ProcessName, a.TcpConnections, a.UdpEndpoints, a.TotalConnections, Display = $"{a.ProcessName}  ({a.TcpConnections} TCP + {a.UdpEndpoints} UDP)" }).ToList();
+            }
+            catch { }
             DrawGraph();
 
             // Live-apply toggles + dark mode (settings save takes effect without restart)
@@ -188,11 +218,11 @@ public sealed partial class MainWindow : Window
 
     public void ShowSettings()
     {
-        // Always create a fresh window - reusing a closed Window + Activate() silently does nothing
         var adapters = _adapters.GetAdapters();
         _settingsWin = new SettingsWindow(_settings, adapters);
         _settingsWin.Closed += (_, _) => _settingsWin = null;
-        _settingsWin.BringToFront();
+        _settingsWin.Activate();
+        DispatcherQueue.TryEnqueue(() => _settingsWin.Activate());
     }
 
     public void Shutdown()

@@ -10,6 +10,7 @@ public sealed partial class SettingsWindow : Window
     private readonly AppSettings _settings;
     private readonly IReadOnlyList<NetworkAdapterInfo> _adapters;
     private readonly SettingsService _store = new();
+    private readonly HistoryStore _history = new();
 
     public SettingsWindow() : this(new AppSettings(), Array.Empty<NetworkAdapterInfo>())
     {
@@ -23,12 +24,8 @@ public sealed partial class SettingsWindow : Window
         Title = "Settings";
         // Settings dialog stays Light so controls remain readable regardless of Main dark/light choice
         ((FrameworkElement)Content).RequestedTheme = ElementTheme.Light;
-        AppWindow.Resize(new SizeInt32(620, 560));
-        try
-        {
-            AppWindow.SetPresenter(Microsoft.UI.Windowing.OverlappedPresenter.Create());
-        }
-        catch { }
+        AppWindow.Resize(new SizeInt32(620, 640));
+        _history.Load();
         LoadValues();
     }
 
@@ -61,6 +58,7 @@ public sealed partial class SettingsWindow : Window
 
         PollIntervalBox.Value = System.Math.Clamp(_settings.PollIntervalMs, 250, 5000);
         HistoryRetentionBox.Value = System.Math.Clamp(_settings.HistoryRetentionDays, 0, 365);
+        TrackPerAppCheck.IsChecked = _settings.TrackPerApp;
         ShowTrayCheck.IsChecked = _settings.ShowTrayIcon;
         ShowHudCheck.IsChecked = _settings.ShowTaskbarHud;
         ShowGraphCheck.IsChecked = _settings.ShowGraph;
@@ -82,6 +80,7 @@ public sealed partial class SettingsWindow : Window
         var interval = (int)Math.Round(PollIntervalBox.Value);
         _settings.PollIntervalMs = System.Math.Clamp(interval, 250, 5000);
         _settings.HistoryRetentionDays = System.Math.Clamp((int)Math.Round(HistoryRetentionBox.Value), 0, 365);
+        _settings.TrackPerApp = TrackPerAppCheck.IsChecked == true;
         _settings.ShowTrayIcon = ShowTrayCheck.IsChecked == true;
         _settings.ShowTaskbarHud = ShowHudCheck.IsChecked == true;
         _settings.ShowGraph = ShowGraphCheck.IsChecked == true;
@@ -92,13 +91,10 @@ public sealed partial class SettingsWindow : Window
 
         _store.Save(_settings);
         _store.ApplyStartWithWindows(_settings.StartWithWindows);
+        _history.Load();
+        _history.Prune(_settings.HistoryRetentionDays);
         // Keep Settings dialog Light — MainWindow picks up ThemeMode on its next tick
         StatusText.Text = "Saved. Restart the app to apply poll interval / adapter.";
         AdapterModeCombo.Focus(FocusState.Programmatic);
-    }
-
-    public void BringToFront()
-    {
-        Activate();
     }
 }
