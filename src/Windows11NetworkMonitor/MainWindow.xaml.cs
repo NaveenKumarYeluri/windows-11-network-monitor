@@ -142,7 +142,8 @@ public sealed partial class MainWindow : Window
     {
         if (_settingsWin is null)
         {
-            _settingsWin = new SettingsWindow(_settings);
+            var adapters = _adapters.GetAdapters();
+            _settingsWin = new SettingsWindow(_settings, adapters);
             _settingsWin.Closed += (_, _) => _settingsWin = null;
         }
         _settingsWin.Activate();

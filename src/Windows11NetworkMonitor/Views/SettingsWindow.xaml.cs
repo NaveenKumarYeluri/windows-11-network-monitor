@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using Windows.Graphics;
 using Windows11NetworkMonitor.Models;
 using Windows11NetworkMonitor.Services;
@@ -8,15 +9,17 @@ namespace Windows11NetworkMonitor.Views;
 public sealed partial class SettingsWindow : Window
 {
     private readonly AppSettings _settings;
+    private readonly IReadOnlyList<NetworkAdapterInfo> _adapters;
     private readonly SettingsService _store = new();
 
-    public SettingsWindow() : this(new AppSettings())
+    public SettingsWindow() : this(new AppSettings(), Array.Empty<NetworkAdapterInfo>())
     {
     }
 
-    public SettingsWindow(AppSettings settings)
+    public SettingsWindow(AppSettings settings, IReadOnlyList<NetworkAdapterInfo> adapters)
     {
         _settings = settings;
+        _adapters = adapters;
         InitializeComponent();
         Title = "Settings";
         AppWindow.Resize(new SizeInt32(620, 560));
@@ -30,8 +33,29 @@ public sealed partial class SettingsWindow : Window
 
     private void LoadValues()
     {
-        AdapterModeBox.Text = _settings.AdapterMode;
-        PollIntervalBox.Value = _settings.PollIntervalMs;
+        AdapterModeCombo.Items.Clear();
+        AdapterModeCombo.Items.Add("Auto");
+        AdapterModeCombo.Items.Add("Combined");
+        foreach (var a in _adapters)
+        {
+            if (string.IsNullOrWhiteSpace(a.Name)) continue;
+            if (!AdapterModeCombo.Items.Contains(a.Name))
+                AdapterModeCombo.Items.Add(a.Name);
+        }
+
+        var wanted = (string.IsNullOrWhiteSpace(_settings.AdapterMode) ? "Auto" : _settings.AdapterMode.Trim());
+        var idx = 0;
+        for (int i = 0; i < AdapterModeCombo.Items.Count; i++)
+        {
+            if (string.Equals(AdapterModeCombo.Items[i]?.ToString(), wanted, StringComparison.OrdinalIgnoreCase))
+            {
+                idx = i;
+                break;
+            }
+        }
+        AdapterModeCombo.SelectedIndex = idx;
+
+        PollIntervalBox.Value = System.Math.Clamp(_settings.PollIntervalMs, 250, 5000);
         ShowTrayCheck.IsChecked = _settings.ShowTrayIcon;
         ShowHudCheck.IsChecked = _settings.ShowTaskbarHud;
         ShowGraphCheck.IsChecked = _settings.ShowGraph;
@@ -43,8 +67,16 @@ public sealed partial class SettingsWindow : Window
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        _settings.AdapterMode = string.IsNullOrWhiteSpace(AdapterModeBox.Text) ? "Auto" : AdapterModeBox.Text.Trim();
-        _settings.PollIntervalMs = (int)PollIntervalBox.Value;
+        var selected = AdapterModeCombo.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(selected) && AdapterModeCombo.SelectedItem is string s)
+            selected = s.Trim();
+        _settings.AdapterMode = string.IsNullOrWhiteSpace(selected) ? "Auto" : selected!;
+        // Preserve canonical casing for Auto/Combined so polling matches regardless of typing case
+        if (string.Equals(_settings.AdapterMode, "auto", StringComparison.OrdinalIgnoreCase)) _settings.AdapterMode = "Auto";
+        if (string.Equals(_settings.AdapterMode, "combined", StringComparison.OrdinalIgnoreCase)) _settings.AdapterMode = "Combined";
+
+        var interval = (int)Math.Round(PollIntervalBox.Value);
+        _settings.PollIntervalMs = System.Math.Clamp(interval, 250, 5000);
         _settings.ShowTrayIcon = ShowTrayCheck.IsChecked == true;
         _settings.ShowTaskbarHud = ShowHudCheck.IsChecked == true;
         _settings.ShowGraph = ShowGraphCheck.IsChecked == true;
@@ -54,6 +86,7 @@ public sealed partial class SettingsWindow : Window
 
         _store.Save(_settings);
         _store.ApplyStartWithWindows(_settings.StartWithWindows);
-        StatusText.Text = "Saved.";
+        StatusText.Text = "Saved. Restart the app to apply poll interval / adapter.";
+        AdapterModeCombo.Focus(FocusState.Programmatic);
     }
 }

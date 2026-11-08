@@ -40,7 +40,7 @@ public sealed class NetworkAdapterService : IDisposable
         var active = SelectActive(adapters);
 
         double downBps = 0, upBps = 0;
-        var targets = _settings.AdapterMode == "Combined"
+        var targets = string.Equals(_settings.AdapterMode, "Combined", StringComparison.OrdinalIgnoreCase)
             ? adapters.Where(a => a.IsUp && !a.IsLoopback).ToList()
             : active is null ? new List<NetworkAdapterInfo>() : new List<NetworkAdapterInfo> { active };
 
@@ -99,7 +99,9 @@ public sealed class NetworkAdapterService : IDisposable
 
     private NetworkAdapterInfo? SelectActive(IReadOnlyList<NetworkAdapterInfo> adapters)
     {
-        if (!string.IsNullOrEmpty(_settings.AdapterMode) && _settings.AdapterMode != "Auto" && _settings.AdapterMode != "Combined")
+        if (!string.IsNullOrEmpty(_settings.AdapterMode)
+            && !string.Equals(_settings.AdapterMode, "Auto", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(_settings.AdapterMode, "Combined", StringComparison.OrdinalIgnoreCase))
         {
             var want = _settings.AdapterMode.Trim();
             var m = adapters.FirstOrDefault(a =>

@@ -10,9 +10,9 @@
             <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" />
 
             <StackPanel Spacing="6">
-                <TextBlock Text="Adapter mode (Auto / Combined / specific)" FontWeight="SemiBold" />
-                <TextBox x:Name="AdapterModeBox" PlaceholderText="Auto" />
-                <TextBlock Text="Auto = auto-select active adapter. Combined = sum of all adapters. Or enter the exact name from the Adapters list (e.g. Wi-Fi). Click Save, then restart the app." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+                <TextBlock Text="Adapter mode" FontWeight="SemiBold" />
+                <ComboBox x:Name="AdapterModeCombo" PlaceholderText="Auto" IsEditable="True" MinWidth="280" HorizontalAlignment="Stretch" />
+                <TextBlock Text="Auto = auto-select the active connection (Wi-Fi / Ethernet). Combined = sum of all adapters. Or pick a specific adapter from the list. Click Save, then restart the app." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
 
             <StackPanel Spacing="6">
