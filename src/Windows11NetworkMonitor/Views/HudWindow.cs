@@ -18,7 +18,17 @@ public sealed class HudWindow : Window
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
+    [DllImport("user32.dll")]
+    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("user32.dll")]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
     private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+    private const int GWL_EXSTYLE = -20;
+    private const int WS_EX_TOPMOST = 0x00000008;
+    private const int WS_EX_NOACTIVATE = 0x08000000;
+    private const int WS_EX_TOOLWINDOW = 0x00000080;
     private const uint SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_SHOWWINDOW = 0x0040;
 
     private readonly AppSettings _settings;
@@ -56,6 +66,21 @@ public sealed class HudWindow : Window
             presenter.IsMinimizable = false;
             presenter.SetBorderAndTitleBar(false, false);
         }
+
+        Activated += (_, _) =>
+        {
+            Reposition();
+            try
+            {
+                var hwnd = FindWindow(null, "HUD");
+                if (hwnd != IntPtr.Zero)
+                {
+                    var ex = GetWindowLong(hwnd, GWL_EXSTYLE);
+                    SetWindowLong(hwnd, GWL_EXSTYLE, ex | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+                }
+            }
+            catch { }
+        };
 
         _repositionTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _repositionTimer.Tick += (_, _) => Reposition();

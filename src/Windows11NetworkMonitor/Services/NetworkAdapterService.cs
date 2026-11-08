@@ -101,7 +101,11 @@ public sealed class NetworkAdapterService : IDisposable
     {
         if (!string.IsNullOrEmpty(_settings.AdapterMode) && _settings.AdapterMode != "Auto" && _settings.AdapterMode != "Combined")
         {
-            var m = adapters.FirstOrDefault(a => a.Id == _settings.AdapterMode);
+            var want = _settings.AdapterMode.Trim();
+            var m = adapters.FirstOrDefault(a =>
+                string.Equals(a.Id, want, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(a.Name, want, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(a.Description, want, StringComparison.OrdinalIgnoreCase));
             if (m is not null) return m;
         }
 
