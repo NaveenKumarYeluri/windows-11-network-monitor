@@ -37,15 +37,6 @@ public sealed partial class AppSettings : ObservableObject
     [ObservableProperty]
     private bool trackPerApp = true;
 
-    [ObservableProperty]
-    private int graphWindowSeconds = 60;
-
-    [ObservableProperty]
-    private string downloadColor = "#0078D4";
-
-    [ObservableProperty]
-    private string uploadColor = "#D83B01";
-
     // HUD placement (relative / absolute offsets in DIPs)
     [ObservableProperty]
     private int hudOffsetX = 0;

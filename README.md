@@ -21,22 +21,25 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 
 ## Features
 
-- [x] Live download / upload speed (auto B/s → KB/s → MB/s → GB/s)
-- [x] Auto-detects **WiFi, Ethernet, USB tethering, mobile hotspot** — no manual selection
-- [x] Auto-switches to the adapter that owns the default route (internet)
-- [x] Live mini-graph (last 60 seconds, download = blue, upload = orange)
-- [x] Statistics: session total, daily total, peak, average, latency (ping)
-- [x] WiFi details: SSID + signal % (via `wlanapi.dll`)
-- [x] System tray icon with custom-drawn text (updates every 1s)
-- [x] Taskbar HUD (top/bottom/left/right, center/left alignment, DPI-aware, auto-hide aware)
-- [x] Modern Fluent / WinUI 3 interface — Mica, dark/light theme, accent color
-- [x] Settings window (JSON persisted to `%LocalAppData%`)
-- [x] Start with Windows (registry `Run` key)
-- [x] Lightweight: < 0.3% CPU, < 50 MB RAM, polling every 500 ms–1 s
+- [x] Live download / upload speed (auto `B/s → KB/s → MB/s → GB/s`) for **WiFi, Ethernet, USB tethering, mobile hotspot — any adapter**
+- [x] Auto-selects the adapter that owns the default route (internet); **Combined** mode sums all
+- [x] **Live graph (last 60 s)** — blue = download, orange = upload, left axis `KB/MB/s` scale + gridlines
+- [x] **Statistics** — session ↓/↑, today ↓/↑, peak ↓/↑, average, ICMP latency
+- [x] **Recent history (last 7 days)** — daily ↓/↑ totals in Statistics (scrolls with the page, no inner list)
+- [x] **Per-app usage (estimated, toggleable)** — *Apps using network now* (live TCP/UDP owner processes) + *Top app today* attributed by open-connection share
+- [x] **Usage history retention** — Settings slider `0–365 days` (90 = 3 months, 180 = 6 months, 0 = forever) prunes `%LOCALAPPDATA%\Windows11NetworkMonitor\usage-history.json`
+- [x] **System tray icon** with speed text (updates ~1 Hz; Win11 needs `^` promotion to pin it)
+- [x] **Taskbar HUD** — borderless, always-on-top `150×28`, docked to the bottom taskbar, DPI-aware (offsets are internal — no UI yet)
+- [x] **Theme** — System / Light / Dark (Main + HUD follow it; Settings stays Light for readability)
+- [x] Settings window (JSON in `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json`), start-with-Windows (`Run` key), adapter / poll-interval controls
+- [x] **Icon** — `NetworkMonitor.ico` + PNG/SVG (see Icon section)
+- [x] Lightweight: polling every 250–5000 ms (default 1000 ms), no admin needed
+
+> **Limitations to know:** per-app bytes are an **estimate proportional to open-connection count** (Windows exposes no per-socket byte counters to user mode). Byte-accurate counts need a WFP callout driver (admin) — not bundled. Wi-Fi SSID/signal display is **not** implemented yet (was a stub in early builds).
 
 ## Screenshots
 
-> Coming soon — run `src/Windows11NetworkMonitor` once built and check `docs/screenshots/`.
+> The tray icon, HUD and dashboard are best understood running the build — screenshots are TODO (add them under `docs/screenshots/` when available).
 
 ## Requirements
 
@@ -66,33 +69,42 @@ CI builds are available as artifacts on every push (see Actions tab). Releases a
 ## Usage
 
 1. Launch the app — tray icon + taskbar HUD appear.
-2. Click the tray icon or HUD to open the detail window (graph + stats).
-3. Right-click tray icon → Settings to change adapter, colors, polling rate, HUD position.
-4. In Settings → **General** → enable **Start with Windows**.
+2. Click the tray icon or HUD to open the dashboard (graph + adapters + Statistics with history + Apps).
+3. **Settings** (button in `NavigationView.Header` or tray right-click): adapter mode, poll interval (restart to apply), Theme (System/Light/Dark), history retention (0–365 days), HUD/graph toggles, *Track per-app usage*, virtual adapters, *Start with Windows*.
+4. Data files: `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json` and `usage-history.json`. Delete that folder to reset.
 
 ### Auto-detect logic
 
 ```
 Enumerate adapters where:
-  OperStatus == Up AND NOT Loopback AND NOT Virtual (optional, toggleable)
-Poll InOctets / OutOctets every interval
+  OperStatus == Up AND NOT Loopback AND (optionally include Virtual)
+Poll InOctets / OutOctets every interval (default 1000 ms, editable 250–5000 ms)
 speed = (current - previous) / interval
-Active adapter = one that owns default IPv4/IPv6 route, or highest traffic if tie
-Switch automatically when WiFi disconnects and Ethernet comes up
-Show "Combined" mode = sum of all physical adapters
+Active = adapter with IPv4 (fallback IPv6) that owns the default route; else first Up
+Combined = sum of all Up non-loopback adapters
+Switches automatically when WiFi drops and Ethernet comes up
 ```
+
+### Per-app tracking (estimated)
+
+```
+GetExtendedTcpTable (AF_INET + AF_INET6, owner-PID table) → PID → ProcessName
+Each tick: device ↓/↑ delta × (app connections / Σ connections) → per-app daily total
+Stored per-app per-day alongside device totals; pruned by the same retention setting
+```
+
 
 ## Architecture
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ```
-AdapterPoller (NetworkInterface) → SpeedCalculator → RingBuffer (120 samples)
-      → TrayIconService (custom drawn text)
-      → TaskbarHudWindow (transparent, docked)
-      → DetailWindow (graph + stats)
+NetworkAdapterService (NetworkInterface) → SpeedHistory (120 samples ≈ 60 s)
+    → MainWindow graph/stats + TrayIconService + HudWindow
+    → HistoryStore (usage-history.json, device + per-app, retention 0–365 d)
+    → PerAppTracker (GetExtendedTcpTable, share-by-connection estimate)
 SettingsService (JSON) ← SettingsWindow (WinUI Fluent)
-WifiService (wlanapi) → SSID + signal
+WifiService (Ping latency only)
 ```
 
 ## Tech Stack
@@ -101,10 +113,14 @@ WifiService (wlanapi) → SSID + signal
 | ------------ | ------------------------------------------- |
 | Language     | C# .NET 8                                   |
 | UI           | WinUI 3 (Windows App SDK 1.7.250310001)      |
-| Network      | `System.Net.NetworkInformation` + Win32 `iphlpapi` / `wlanapi` |
+| Network      | `System.Net.NetworkInformation` + Win32 `iphlpapi` / `shell32` |
 | Graph        | Custom Canvas/Polyline (v1, zero deps) — LiveChartsCore planned |
-| Build        | GitHub Actions (`windows-latest`)           |
+| Build        | GitHub Actions (`windows-2022`, MSBuild)      |
 | Packaging    | Unpackaged self-contained **folder** WinExe (single-file WinUI crashes with `0x80040111`), MSIX planned |
+
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) — LiveCharts upgrade, full SSID/signal, MSIX, auto-update, localization.
 
 ## Contributing
 
@@ -142,8 +158,7 @@ Suggested citation: *Naveen Kumar Yeluri (2026), Windows 11 Network Monitor, MIT
 - `Microsoft.WindowsAppSDK 1.7.250310001` (WinUI 3) — MIT
 - `CommunityToolkit.Mvvm 8.2.2` (`ObservableObject`) — MIT
 - `System.Drawing.Common 8.0.0` (tray icon drawing) — MIT
-- `System.Management 8.0.0` — MIT
 
-**System APIs used (no code copied):** `System.Net.NetworkInformation`, Win32 `iphlpapi.dll` (`GetExtendedTcpTable` for per-process connection enumeration), `wlanapi.dll` (Wi-Fi SSID/signal), `shell32.dll` (`Shell_NotifyIcon`).
+**System APIs used (no code copied):** `System.Net.NetworkInformation`, Win32 `iphlpapi.dll` (`GetExtendedTcpTable` for per-process connection enumeration), `shell32.dll` (`Shell_NotifyIcon`). The earlier `wlanapi.dll` SSID stub was removed (see Limitations).
 
 Per-app byte counts are **estimates proportional to open-connection count** — the shipped build does not bundle a WFP driver. Windows byte-accurate attribution would require an admin ETW/WFP callout (future work).

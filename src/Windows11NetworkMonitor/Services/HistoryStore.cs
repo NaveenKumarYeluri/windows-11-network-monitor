@@ -90,8 +90,6 @@ public sealed class HistoryStore
         foreach (var k in toRemove) map.Remove(k);
     }
 
-    public DayUsage For(DateOnly date) => _data.TryGetValue(date.ToString("yyyy-MM-dd"), out var d) ? d : new DayUsage();
-
     public IReadOnlyList<(DateOnly Date, long Down, long Up)> Recent(int days)
     {
         var list = new List<(DateOnly, long, long)>();

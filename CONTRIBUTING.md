@@ -2,7 +2,7 @@
 
 1. Fork + branch (`feat/xxx`, `fix/xxx`).
 2. Build locally: `dotnet build Windows11NetworkMonitor.sln -c Release`
-3. CI must be green (GitHub Actions `build.yml` on `windows-latest`).
+3. CI must be green (GitHub Actions `build.yml` on `windows-2022`).
 4. Keep polling cheap: never block UI thread, throttle icon redraws to 1 Hz.
 5. Open PR with description + screenshot if UI changed.
 

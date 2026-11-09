@@ -1,5 +1,8 @@
 name: Release
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 on:
   push:
     tags: [ 'v*.*.*' ]
@@ -9,7 +12,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
 
@@ -18,11 +21,14 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Setup MSBuild (WinUI XAML compiler needs full-framework MSBuild)
+        uses: microsoft/setup-msbuild@v2
+
       - name: Restore
         run: dotnet restore Windows11NetworkMonitor.sln
 
-      - name: Publish single-file
-        run: dotnet publish src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj --configuration Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o ./publish --nologo
+      - name: Publish self-contained folder (same as build.yml — single-file WinUI crashes with 0x80040111)
+        run: msbuild src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj /p:Configuration=Release /p:Platform=x64 /p:RuntimeIdentifier=win-x64 /p:SelfContained=true /p:WindowsAppSDKSelfContained=true /p:PublishDir=./publish/ /t:Publish /verbosity:m
 
       - name: Zip release package
         run: Compress-Archive -Path ./publish/* -DestinationPath ./windows-11-network-monitor-${{ github.ref_name }}-win-x64.zip -Force

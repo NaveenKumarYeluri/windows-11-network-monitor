@@ -28,7 +28,6 @@ public sealed partial class MainWindow : Window
     private string _lastAppCsv = string.Empty;
     private string _lastAdapterCsv = string.Empty;
     private readonly PeriodicTimer _latencyTimer = new(TimeSpan.FromSeconds(3));
-    private double _lastDown, _lastUp;
     private long _latencyMs = -1;
     private IReadOnlyList<AppUsage> _latestApps = Array.Empty<AppUsage>();
 
@@ -73,9 +72,6 @@ public sealed partial class MainWindow : Window
 
     private void OnSpeedChanged(IReadOnlyList<NetworkAdapterInfo> all, NetworkAdapterInfo? active, double down, double up)
     {
-        _lastDown = down;
-        _lastUp = up;
-
         _settings.SessionDownloadBytes += (long)(down * _settings.PollIntervalMs / 1000);
         _settings.SessionUploadBytes += (long)(up * _settings.PollIntervalMs / 1000);
         var downDelta = (long)(down * _settings.PollIntervalMs / 1000);
