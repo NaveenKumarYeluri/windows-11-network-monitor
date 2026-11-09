@@ -14,16 +14,16 @@ This app uses the two pragmatic surrogates:
 | Component | File | Responsibility |
 |---|---|---|
 | `NetworkAdapterService` | `Services/NetworkAdapterService.cs` | Poll `NetworkInterface.GetAllNetworkInterfaces()`, compute deltas, auto-select active adapter |
-| `SpeedHistory` | `Services/SpeedHistory.cs` | 120-sample ring buffer + peak/avg; `SpeedFormatter` (`B/s → GB/s`) |
+| `SpeedHistory` | `Services/SpeedHistory.cs` | ~60 s ring buffer (capacity derived from poll interval) + peak/avg; `SpeedFormatter` (`B/s → GB/s`) |
 | `WifiService` | `Services/WifiService.cs` | ICMP ping latency only (SSID/signal is future work) |
-| `TrayIconService` | `Services/TrayIconService.cs` | Win32 tray, custom-drawn text icon |
+| `TrayIconService` | `Services/TrayIconService.cs` | Win32 tray, custom-drawn text icon, WndProc subclass for clicks, re-adds icon on Explorer restart (`TaskbarCreated`), reclaims GDI icons via `DestroyIcon` |
 | `TaskbarHudPosition` | `Services/TaskbarHudPosition.cs` | Dock HUD to taskbar (Win11: bottom, offset to clear `^` overflow) |
 | `HudWindow` | `Views/HudWindow.cs` | Transparent `150×28` floating HUD, `DispatcherTimer` reposition |
 | `MainWindow` | `MainWindow.xaml(.cs)` | Dashboard, graph (Y-axis labels), adapters, statistics (7-day history + top apps), apps-now; `StackPanel` rows inside one outer `ScrollViewer` (no inner list to snap) |
 | `SettingsWindow` | `Views/SettingsWindow.xaml(.cs)` | Fluent settings — adapter, poll interval, Theme System/Light/Dark, retention 0–365 d, toggles (HUD/graph/per-app/virtual/autostart) |
 | `SettingsService` | `Services/SettingsService.cs` | JSON persistence + `Run` key autostart (`%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json`) |
 | `HistoryStore` | `Services/HistoryStore.cs` | Per-day device totals + per-app totals (`usage-history.json`), retention pruning |
-| `PerAppTracker` | `Services/PerAppTracker.cs` | `GetExtendedTcpTable` (TCP/UDP, IPv4+IPv6, owner-PID) → process list; bytes attributed by connection share (fractional remainder) |
+| `PerAppTracker` | `Services/PerAppTracker.cs` | `GetExtendedTcpTable` + `GetExtendedUdpTable` (IPv4+IPv6, owner-PID) → process list (10 s PID-name cache); bytes attributed by connection share (fractional remainder) |
 
 ## Data flow
 

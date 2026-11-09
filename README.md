@@ -8,6 +8,8 @@
 
 <p align="center">
   <a href="https://github.com/NaveenKumarYeluri/windows-11-network-monitor/actions/workflows/build.yml"><img src="https://github.com/NaveenKumarYeluri/windows-11-network-monitor/actions/workflows/build.yml/badge.svg" alt="Build" /></a>
+  <a href="https://github.com/NaveenKumarYeluri/windows-11-network-monitor/releases/latest"><img src="https://img.shields.io/github/v/release/NaveenKumarYeluri/windows-11-network-monitor" alt="Release" /></a>
+  <a href="https://github.com/NaveenKumarYeluri/windows-11-network-monitor/releases"><img src="https://img.shields.io/github/downloads/NaveenKumarYeluri/windows-11-network-monitor/total" alt="Downloads" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
   <a href="https://www.microsoft.com/windows"><img src="https://img.shields.io/badge/Platform-Windows%2011%20%7C%2010-blue" alt="Platform" /></a>
 </p>
@@ -26,10 +28,11 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 - [x] **Live graph (last 60 s)** — blue = download, orange = upload, left axis `KB/MB/s` scale + gridlines
 - [x] **Statistics** — session ↓/↑, today ↓/↑, peak ↓/↑, average, ICMP latency
 - [x] **Recent history (last 7 days)** — daily ↓/↑ totals in Statistics (scrolls with the page, no inner list)
-- [x] **Per-app usage (estimated, toggleable)** — *Apps using network now* (live TCP/UDP owner processes) + *Top app today* attributed by open-connection share
+- [x] **Per-app usage (estimated, toggleable)** — *Apps using network now* (live TCP + UDP owner processes, IPv4 + IPv6) + *Top app today* attributed by open-connection share
 - [x] **Usage history retention** — Settings slider `0–365 days` (90 = 3 months, 180 = 6 months, 0 = forever) prunes `%LOCALAPPDATA%\Windows11NetworkMonitor\usage-history.json`
-- [x] **System tray icon** with speed text (updates ~1 Hz; Win11 needs `^` promotion to pin it)
-- [x] **Taskbar HUD** — borderless, always-on-top `150×28`, docked to the bottom taskbar, DPI-aware (offsets are internal — no UI yet)
+- [x] **System tray icon** with speed text (updates ~1 Hz; Win11 needs `^` promotion to pin it). Left-click opens the dashboard, right-click opens Settings; the icon survives Explorer restarts
+- [x] **Taskbar HUD** — borderless, always-on-top `150×28`, docks to the taskbar on any monitor, DPI-aware (offsets are internal — no UI yet)
+- [x] **Single instance** — launching the exe again focuses the running window instead of double-counting usage
 - [x] **Theme** — System / Light / Dark (Main + HUD follow it; Settings stays Light for readability)
 - [x] Settings window (JSON in `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json`), start-with-Windows (`Run` key), adapter / poll-interval controls
 - [x] **Icon** — `NetworkMonitor.ico` + PNG/SVG (see Icon section)
@@ -51,12 +54,11 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 
 This app ships as an **unpackaged folder build** (single-file WinUI does not work reliably). Keep the whole folder together.
 
-### Option A — Download a build (recommended)
-1. Go to [Actions → Build](../../actions) and pick the latest green run
-2. Download the artifact `Windows11NetworkMonitor-win-x64-<sha>.zip`
-3. Unzip to e.g. `%LOCALAPPDATA%\Programs\Windows11NetworkMonitor\` (no admin needed) or `C:\Program Files\Windows11NetworkMonitor\`
-4. Run `Windows11NetworkMonitor.exe` from that folder (SmartScreen: **More info → Run anyway**)
-5. Right-click the `.exe` → **Send to → Desktop (create shortcut)** and enable **Start with Windows** in Settings. Pin the tray icon via **Settings → Personalization → Taskbar → Other system tray icons** (Win11 hides it under `^` by default).
+### Option A — Download a Release (recommended)
+1. Go to [Releases](../../releases/latest) and download `windows-11-network-monitor-v*.**.*-win-x64.zip` from the latest release
+2. Unzip to e.g. `%LOCALAPPDATA%\Programs\Windows11NetworkMonitor\` (no admin needed) or `C:\Program Files\Windows11NetworkMonitor\`
+3. Run `Windows11NetworkMonitor.exe` from that folder (SmartScreen: **More info → Run anyway**)
+4. Right-click the `.exe` → **Send to → Desktop (create shortcut)** and enable **Start with Windows** in Settings. Pin the tray icon via **Settings → Personalization → Taskbar → Other system tray icons** (Win11 hides it under `^` by default).
 
 ### Option B — Build from source
 ```powershell
@@ -64,14 +66,14 @@ git clone https://github.com/NaveenKumarYeluri/windows-11-network-monitor.git
 cd windows-11-network-monitor
 dotnet build Windows11NetworkMonitor.sln -c Release
 ```
-CI builds are available as artifacts on every push (see Actions tab). Releases are being migrated to the same folder packaging.
+CI builds are available as artifacts on every push (see Actions tab). Signed/packaged MSIX releases are future work (see Roadmap) — today the app ships as this zipped folder build.
 
 ## Usage
 
-1. Launch the app — tray icon + taskbar HUD appear.
-2. Click the tray icon or HUD to open the dashboard (graph + adapters + Statistics with history + Apps).
-3. **Settings** (button in `NavigationView.Header` or tray right-click): adapter mode, poll interval (restart to apply), Theme (System/Light/Dark), history retention (0–365 days), HUD/graph toggles, *Track per-app usage*, virtual adapters, *Start with Windows*.
-4. Data files: `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json` and `usage-history.json`. Delete that folder to reset.
+1. Launch the app — tray icon + taskbar HUD appear. Launching it again focuses the running instance (single-instance).
+2. Left-click the tray icon (or tap the HUD) to open the dashboard; right-click the tray icon to open Settings.
+3. **Settings** (button in `NavigationView.Header` or tray right-click): adapter mode (applies immediately), poll interval (restart to apply), Theme (System/Light/Dark), history retention (0–365 days), HUD/graph toggles, *Track per-app usage*, virtual adapters, *Start with Windows*.
+4. Data files: `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json` and `usage-history.json`. Delete that folder to reset. Daily/session counters and history are saved on every exit, so they survive restarts.
 
 ### Auto-detect logic
 
@@ -88,7 +90,7 @@ Switches automatically when WiFi drops and Ethernet comes up
 ### Per-app tracking (estimated)
 
 ```
-GetExtendedTcpTable (AF_INET + AF_INET6, owner-PID table) → PID → ProcessName
+GetExtendedTcpTable + GetExtendedUdpTable (AF_INET + AF_INET6, owner-PID tables) → PID → ProcessName (cached 10 s)
 Each tick: device ↓/↑ delta × (app connections / Σ connections) → per-app daily total
 Stored per-app per-day alongside device totals; pruned by the same retention setting
 ```
@@ -96,16 +98,16 @@ Stored per-app per-day alongside device totals; pruned by the same retention set
 
 ## Architecture
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
 ```
-NetworkAdapterService (NetworkInterface) → SpeedHistory (120 samples ≈ 60 s)
+NetworkAdapterService (NetworkInterface) → SpeedHistory (~60 s window, derived from poll interval)
     → MainWindow graph/stats + TrayIconService + HudWindow
     → HistoryStore (usage-history.json, device + per-app, retention 0–365 d)
-    → PerAppTracker (GetExtendedTcpTable, share-by-connection estimate)
+    → PerAppTracker (GetExtendedTcpTable + GetExtendedUdpTable, share-by-connection estimate)
 SettingsService (JSON) ← SettingsWindow (WinUI Fluent)
 WifiService (Ping latency only)
 ```
+
+For the full picture (data flow, auto-detect logic, per-app attribution math) see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Tech Stack
 
@@ -159,6 +161,6 @@ Suggested citation: *Naveen Kumar Yeluri (2026), Windows 11 Network Monitor, MIT
 - `CommunityToolkit.Mvvm 8.2.2` (`ObservableObject`) — MIT
 - `System.Drawing.Common 8.0.0` (tray icon drawing) — MIT
 
-**System APIs used (no code copied):** `System.Net.NetworkInformation`, Win32 `iphlpapi.dll` (`GetExtendedTcpTable` for per-process connection enumeration), `shell32.dll` (`Shell_NotifyIcon`). The earlier `wlanapi.dll` SSID stub was removed (see Limitations).
+**System APIs used (no code copied):** `System.Net.NetworkInformation`, Win32 `iphlpapi.dll` (`GetExtendedTcpTable`/`GetExtendedUdpTable` for per-process connection enumeration), `shell32.dll` (`Shell_NotifyIcon`), `user32.dll` (`SetWindowSubclass`/`DefSubclassProc` for tray message routing, `GetDpiForWindow`), `comctl32.dll`. The earlier `wlanapi.dll` SSID stub was removed (see Limitations).
 
 Per-app byte counts are **estimates proportional to open-connection count** — the shipped build does not bundle a WFP driver. Windows byte-accurate attribution would require an admin ETW/WFP callout (future work).

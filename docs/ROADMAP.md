@@ -1,14 +1,22 @@
 # Roadmap
 
-## Shipped (v1.0 folder build)
-- [x] WinUI 3 scaffold, solution, GitHub Actions build (folder publish) + release
-- [x] NetworkAdapterService auto-detect (WiFi/Ethernet/any, Auto + Combined)
-- [x] SpeedHistory + Canvas graph with `B/s → GB/s` Y-axis and gridlines
-- [x] Tray icon with drawn text + taskbar HUD (`150×28`, bottom-docked, TOPMOST)
+## Shipped
+### v1.0.1 (first public release — folder zip via GitHub Releases)
+- [x] WinUI 3 scaffold, solution, GitHub Actions build (folder publish) + release packaging
+- [x] NetworkAdapterService auto-detect (WiFi/Ethernet/any, Auto + Combined, live interval changes)
+- [x] SpeedHistory + Canvas graph (~60 s window derived from poll interval, `B/s → GB/s` Y-axis, gridlines)
+- [x] Tray icon with drawn speed text, click → dashboard / right-click → Settings (WndProc subclass),
+      resilient to Explorer restarts, GDI-icon handles correctly freed
+- [x] Taskbar HUD (bottom-docked over taskbar, nearest-monitor, DPI-scaled offsets, TOPMOST)
 - [x] Settings (JSON) + start-with-Windows + Theme System/Light/Dark
+- [x] Single-instance guard (second launch focuses the running window)
+- [x] Session/daily counters + history persisted on every exit (no more lost "Today" data)
 - [x] History: 7-day daily totals + per-app totals, retention `0–365 days` (pruned)
-- [x] Per-app live list (`Apps using network now`) — estimated by connection share
+- [x] Per-app live list (TCP + UDP owner PIDs, IPv4 + IPv6, cached PID names) — estimated by connection share
 - [x] App icon (ICO + PNG + SVG) and README acknowledgements / AI-build note
+
+### v1.0.0 (internal build)
+- [x] Initial feature freeze (see git history)
 
 ## Next
 - [ ] Screenshots under `docs/screenshots/`
