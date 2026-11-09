@@ -18,6 +18,7 @@
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Dashboard" Tag="Dashboard" IsSelected="True" />
                 <NavigationViewItem Content="Adapters" Tag="Adapters" />
+                <NavigationViewItem Content="Apps" Tag="Apps" />
                 <NavigationViewItem Content="Statistics" Tag="Statistics" />
             </NavigationView.MenuItems>
             <NavigationView.Header>

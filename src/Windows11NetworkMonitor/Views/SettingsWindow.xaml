@@ -35,7 +35,6 @@
                 <TextBlock Text="How long to keep daily download/upload totals. 90 days = 3 months, 180 days = 6 months, 0 = keep forever. Old days are pruned automatically." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
 
-            <CheckBox x:Name="ShowTrayCheck" Content="Show tray icon" />
             <CheckBox x:Name="ShowHudCheck" Content="Show taskbar HUD" />
             <CheckBox x:Name="ShowGraphCheck" Content="Show graph" />
             <CheckBox x:Name="TrackPerAppCheck" Content="Track per-app usage (estimated)" />

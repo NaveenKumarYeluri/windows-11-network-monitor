@@ -46,7 +46,7 @@ public sealed class PerAppTracker
         {
             string name;
             try { name = Process.GetProcessById(kv.Key).ProcessName; }
-            catch { continue; }
+            catch { name = kv.Key == 0 ? "System" : kv.Key == 4 ? "System" : $"PID {kv.Key}"; }
             list.Add(new AppUsage
             {
                 Pid = kv.Key,

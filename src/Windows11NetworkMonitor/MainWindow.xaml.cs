@@ -184,6 +184,9 @@ public sealed partial class MainWindow : Window
             case "Adapters":
                 MainScroll.ChangeView(null, (float)AdaptersSection.ActualOffset.Y, 1f, true);
                 break;
+            case "Apps":
+                MainScroll.ChangeView(null, (float)AppsSection.ActualOffset.Y, 1f, true);
+                break;
             case "Statistics":
                 MainScroll.ChangeView(null, (float)StatsSection.ActualOffset.Y, 1f, true);
                 break;
