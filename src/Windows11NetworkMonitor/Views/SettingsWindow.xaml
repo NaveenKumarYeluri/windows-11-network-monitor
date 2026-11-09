@@ -42,6 +42,13 @@
             <CheckBox x:Name="StartWithWindowsCheck" Content="Start with Windows" />
 
             <Button x:Name="SaveButton" Content="Save" HorizontalAlignment="Left" Click="SaveButton_Click" />
+
+            <StackPanel Spacing="6">
+                <TextBlock Text="Export" FontWeight="SemiBold" />
+                <Button x:Name="ExportCsvButton" Content="Export history to CSV" HorizontalAlignment="Left" Click="ExportCsvButton_Click" />
+                <TextBlock Text="Writes all daily totals (device + per-app) to a CSV file under %LOCALAPPDATA%\Windows11NetworkMonitor\exports and opens the folder in Explorer." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+
             <TextBlock x:Name="StatusText" Opacity="0.7" />
 
         </StackPanel>

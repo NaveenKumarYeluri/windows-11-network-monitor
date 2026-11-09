@@ -93,6 +93,63 @@ public sealed partial class SettingsWindow : Window
         AdapterModeCombo.Focus(FocusState.Programmatic);
     }
 
+    private void ExportCsvButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Reload from disk so the export always matches what's persisted.
+            _history.Load();
+            var rows = _history.ExportRows();
+            if (rows.Count == 0)
+            {
+                StatusText.Text = "Nothing to export yet — history is empty.";
+                return;
+            }
+
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Windows11NetworkMonitor", "exports");
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, $"usage-history-{DateTime.Now:yyyy-MM-dd_HHmmss}.csv");
+
+            // UTF-8 BOM so Excel opens it without mojibake.
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("Type,Date,App,DownloadBytes,UploadBytes");
+            foreach (var r in rows)
+            {
+                sb.Append(CsvField(r.Type)).Append(',')
+                  .Append(CsvField(r.Date)).Append(',')
+                  .Append(CsvField(r.App)).Append(',')
+                  .Append(r.DownloadBytes).Append(',')
+                  .Append(r.UploadBytes).AppendLine();
+            }
+            System.IO.File.WriteAllText(path, sb.ToString(), new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+
+            StatusText.Text = $"Exported {rows.Count} rows → {path}";
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{path}\"",
+                    UseShellExecute = true
+                });
+            }
+            catch { } // opening Explorer is a convenience, not a requirement
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Export failed: {ex.Message}";
+        }
+    }
+
+    private static string CsvField(string value)
+    {
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        return value;
+    }
+
     public void BringToFront()
     {
         Activate();

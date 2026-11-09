@@ -33,6 +33,7 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 - [x] **System tray icon** with speed text (updates ~1 Hz; Win11 needs `^` promotion to pin it). Left-click opens the dashboard, right-click opens Settings; the icon survives Explorer restarts
 - [x] **Taskbar HUD** — borderless, always-on-top `150×28`, docks to the taskbar on any monitor, DPI-aware (offsets are internal — no UI yet)
 - [x] **Single instance** — launching the exe again focuses the running window instead of double-counting usage
+- [x] **CSV export** — Settings → *Export history to CSV* writes every stored day (device + per-app, bytes) to `%LOCALAPPDATA%\Windows11NetworkMonitor\exports\` and opens the folder
 - [x] **Theme** — System / Light / Dark (Main + HUD follow it; Settings stays Light for readability)
 - [x] Settings window (JSON in `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json`), start-with-Windows (`Run` key), adapter / poll-interval controls
 - [x] **Icon** — `NetworkMonitor.ico` + PNG/SVG (see Icon section)

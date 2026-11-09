@@ -18,6 +18,10 @@
 ### v1.0.0 (internal build)
 - [x] Initial feature freeze (see git history)
 
+### Unreleased
+- [x] Export history to CSV (Settings → writes device + per-app daily totals to
+      `%LOCALAPPDATA%\...\exports\*.csv`, UTF-8 BOM, opens the folder in Explorer)
+
 ## Next
 - [ ] Screenshots under `docs/screenshots/`
 - [ ] Full WLAN SSID + signal % via `WlanQueryInterface` CURRENT_CONNECTION (surface in Dashboard)

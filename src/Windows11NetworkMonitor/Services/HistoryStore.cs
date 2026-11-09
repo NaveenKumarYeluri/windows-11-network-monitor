@@ -22,6 +22,9 @@ public sealed class HistoryStore
         public long UploadBytes { get; set; }
     }
 
+    /// <summary>Flat row for CSV export: one per device-day and per app-day.</summary>
+    public sealed record HistoryCsvRow(string Type, string Date, string App, long DownloadBytes, long UploadBytes);
+
     private sealed class HistoryFile
     {
         public Dictionary<string, DayUsage> Days { get; set; } = new();
@@ -132,6 +135,25 @@ public sealed class HistoryStore
                     list.Add((kv.Key, u.DownloadBytes, u.UploadBytes));
             }
             return list.OrderByDescending(x => x.Item2 + x.Item3).ToList();
+        }
+    }
+
+    /// <summary>All stored data as flat rows (device days + per-app days) for CSV export.</summary>
+    public IReadOnlyList<HistoryCsvRow> ExportRows()
+    {
+        lock (_sync)
+        {
+            var rows = new List<HistoryCsvRow>();
+            foreach (var kv in _data)
+                rows.Add(new HistoryCsvRow("Device", kv.Key, string.Empty, kv.Value.DownloadBytes, kv.Value.UploadBytes));
+            foreach (var app in _perApp)
+                foreach (var day in app.Value)
+                    rows.Add(new HistoryCsvRow("App", day.Key, app.Key, day.Value.DownloadBytes, day.Value.UploadBytes));
+            // Date strings are yyyy-MM-dd → stable ascending order for CSV consumers.
+            return rows.OrderBy(r => r.Date, StringComparer.Ordinal)
+                       .ThenBy(r => r.Type, StringComparer.Ordinal)
+                       .ThenBy(r => r.App, StringComparer.OrdinalIgnoreCase)
+                       .ToList();
         }
     }
 
