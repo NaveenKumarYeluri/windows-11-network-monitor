@@ -58,38 +58,42 @@ public sealed class PerAppTracker
         return list.OrderByDescending(a => a.TotalConnections).ToList();
     }
 
-    private static void CountTcp(Dictionary<int, (int tcp, int udp)> counts, int af)
-    {
-        try
-        {
-            int size = 0;
-            var rc = GetExtendedTcpTable(IntPtr.Zero, ref size, false, af, TCP_TABLE_OWNER_PID, 0);
-            // First call returns ERROR_INSUFFICIENT_BUFFER with required size
-            if (rc != ERROR_INSUFFICIENT_BUFFER && rc != 0) return;
-            if (size <= 0) return;
-            var buf = Marshal.AllocHGlobal(size);
-            try
-            {
-                rc = GetExtendedTcpTable(buf, ref size, false, af, TCP_TABLE_OWNER_PID, 0);
-                if (rc != 0) return;
-                int n = Marshal.ReadInt32(buf);
-                int stride = af == AF_INET6 ? 56 : 24;
-                for (int i = 0; i < n; i++)
+                private static void CountTcp(Dictionary<int, (int tcp, int udp)> counts, int af)
                 {
-                    long rowOff = 4L + i * stride;
-                    int pidOff = (int)(rowOff + (af == AF_INET6 ? 52 : 20));
-                    if (pidOff + 4 > size) break;
-                    var pid = Marshal.ReadInt32(buf, pidOff);
-                    if (pid <= 0) continue;
-                    counts.TryGetValue(pid, out var v);
-                    v.tcp++;
-                    counts[pid] = v;
+                    try
+                    {
+                        int size = 0;
+                        var rc = GetExtendedTcpTable(IntPtr.Zero, ref size, false, af, TCP_TABLE_OWNER_PID, 0);
+                        // First call returns ERROR_INSUFFICIENT_BUFFER (122) with required size — that is success for sizing.
+                        // Do not bail on 122, only on other errors.
+                        if (rc != ERROR_INSUFFICIENT_BUFFER && rc != 0) return;
+                        if (size <= 0) return;
+                        var buf = Marshal.AllocHGlobal(size);
+                        try
+                        {
+                            rc = GetExtendedTcpTable(buf, ref size, false, af, TCP_TABLE_OWNER_PID, 0);
+                            if (rc != 0) return;
+                            int n = Marshal.ReadInt32(buf);
+                            // MIB_TCPROW_OWNER_PID = 24 bytes (PID at +20)
+                            // MIB_TCP6ROW_OWNER_PID = 52 bytes (PID at +48)
+                            int stride = af == AF_INET6 ? 52 : 24;
+                            int pidDelta = af == AF_INET6 ? 48 : 20;
+                            for (int i = 0; i < n; i++)
+                            {
+                                long rowOff = 4L + i * stride;
+                                int pidOff = (int)(rowOff + pidDelta);
+                                if (pidOff + 4 > size) break;
+                                var pid = Marshal.ReadInt32(buf, pidOff);
+                                if (pid <= 0) continue;
+                                counts.TryGetValue(pid, out var v);
+                                v.tcp++;
+                                counts[pid] = v;
+                            }
+                        }
+                        finally { Marshal.FreeHGlobal(buf); }
+                    }
+                    catch { }
                 }
-            }
-            finally { Marshal.FreeHGlobal(buf); }
-        }
-        catch { }
-    }
 
     private static void CountUdp(Dictionary<int, (int tcp, int udp)> counts, int af)
     {

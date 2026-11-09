@@ -19,10 +19,18 @@ public sealed partial class MainWindow : Window
     private readonly PerAppTracker _perAppTracker = new();
     private readonly SpeedHistory _history = new();
     private int _pollTick;
-    private string _lastHistorySig = string.Empty;
+    private readonly Dictionary<string, double> _perAppAccumDown = new();
+    private readonly Dictionary<string, double> _perAppAccumUp = new();
+    // Cached rendered text to avoid rebuilding StackPanels (and resetting scroll) when unchanged.
+    // Using strings (not byte sums) so tiny 100-byte increments don't count as "changed" until visible text differs.
+    private string _lastHistoryCsv = string.Empty;
+    private string _lastTopCsv = string.Empty;
+    private string _lastAppCsv = string.Empty;
+    private string _lastAdapterCsv = string.Empty;
     private readonly PeriodicTimer _latencyTimer = new(TimeSpan.FromSeconds(3));
     private double _lastDown, _lastUp;
     private long _latencyMs = -1;
+    private IReadOnlyList<AppUsage> _latestApps = Array.Empty<AppUsage>();
 
     private TrayIconService? _tray;
     private HudWindow? _hud;
@@ -76,20 +84,43 @@ public sealed partial class MainWindow : Window
         _settings.DailyUploadBytes += upDelta;
         _settings.ResetDailyIfNeeded();
         _perAppTracker.TrackPerApp = _settings.TrackPerApp;
+        ++_pollTick;
 
-        // Every 5th tick, attribute this tick's bytes to visible apps (approx. by connection count)
-        if (++_pollTick % 5 == 0 && _settings.TrackPerApp)
+        // Snapshot once; reused for both attribution and the "Apps using network now" UI below.
+        IReadOnlyList<AppUsage> latestApps = Array.Empty<AppUsage>();
+        if (_settings.TrackPerApp)
+        {
+            try { latestApps = _perAppTracker.Snapshot(); _latestApps = latestApps; } catch { latestApps = _latestApps; }
+        }
+        else { _latestApps = Array.Empty<AppUsage>(); }
+
+        // Attribute THIS tick's bytes (every tick, not every 5th) proportionally to connection share
+        // with fractional remainder accumulation so tiny shares aren't truncated to 0 and lost.
+        if (latestApps.Count > 0 && (downDelta > 0 || upDelta > 0))
         {
             try
             {
-                var apps = _perAppTracker.Snapshot();
-                var totalConns = apps.Sum(a => a.TotalConnections);
+                var totalConns = latestApps.Sum(a => a.TotalConnections);
                 if (totalConns > 0)
                 {
-                    foreach (var a in apps)
+                    foreach (var a in latestApps)
                     {
                         var share = (double)a.TotalConnections / totalConns;
-                        _historyStore.AddPerAppDelta(a.ProcessName, (long)(downDelta * share), (long)(upDelta * share));
+                        var key = a.ProcessName;
+                        _perAppAccumDown.TryGetValue(key, out var dAcc);
+                        _perAppAccumUp.TryGetValue(key, out var uAcc);
+                        dAcc += downDelta * share;
+                        uAcc += upDelta * share;
+                        var dFlush = (long)dAcc;
+                        var uFlush = (long)uAcc;
+                        if (dFlush > 0 || uFlush > 0)
+                        {
+                            _historyStore.AddPerAppDelta(key, dFlush, uFlush);
+                            dAcc -= dFlush;
+                            uAcc -= uFlush;
+                        }
+                        _perAppAccumDown[key] = dAcc;
+                        _perAppAccumUp[key] = uAcc;
                     }
                 }
             }
@@ -107,32 +138,13 @@ public sealed partial class MainWindow : Window
             SessionText.Text = $"{SpeedFormatter.FormatBytes(_settings.SessionDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.SessionUploadBytes)}";
             DailyText.Text = $"{SpeedFormatter.FormatBytes(_settings.DailyDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.DailyUploadBytes)}";
             PeakText.Text = $"{SpeedFormatter.Format(_history.PeakDownloadBps)} / {SpeedFormatter.Format(_history.PeakUploadBps)} / {SpeedFormatter.Format(_history.AvgDownloadBps)}";
-            AdapterList.ItemsSource = all;
-            // Throttle history lists — only refresh when data actually changes, otherwise
-            // ListView resets its scroll so you can never reach day 6/7.
-            var recent = _historyStore.Recent(7);
-            var top = _historyStore.TopApps(DateOnly.FromDateTime(DateTime.Now)).Take(5).ToList();
-            var sig = $"{_historyStore.Recent(7).Sum(r => r.Down + r.Up)}|{top.Sum(t => t.Down + t.Up)}|{top.Count}";
-            if (sig != _lastHistorySig && _pollTick > 2)
-            {
-                _lastHistorySig = sig;
-                HistoryList.ItemsSource = recent.Select(r => new { Date = r.Date.ToString("ddd MMM dd"), Down = SpeedFormatter.FormatBytes(r.Down) + " ↓", Up = SpeedFormatter.FormatBytes(r.Up) + " ↑" }).ToList();
-                TopAppsList.ItemsSource = top.Select(t => new { App = t.App, Down = SpeedFormatter.FormatBytes(t.Down) + " ↓", Up = SpeedFormatter.FormatBytes(t.Up) + " ↑" }).ToList();
-            }
-            else if (_pollTick <= 2)
-            {
-                HistoryList.ItemsSource = recent.Select(r => new { Date = r.Date.ToString("ddd MMM dd"), Down = SpeedFormatter.FormatBytes(r.Down) + " ↓", Up = SpeedFormatter.FormatBytes(r.Up) + " ↑" }).ToList();
-                TopAppsList.ItemsSource = top.Select(t => new { App = t.App, Down = SpeedFormatter.FormatBytes(t.Down) + " ↓", Up = SpeedFormatter.FormatBytes(t.Up) + " ↑" }).ToList();
-            }
-            try
-            {
-                var appsNow = _perAppTracker.TrackPerApp ? _perAppTracker.Snapshot() : Array.Empty<AppUsage>();
-                var prev = AppList.ItemsSource as IEnumerable<AppUsage>;
-                var same = prev is not null && ReferenceEquals(prev, appsNow);
-                if (!same)
-                    AppList.ItemsSource = appsNow.Select(a => new { a.ProcessName, a.TcpConnections, a.UdpEndpoints, a.TotalConnections, Display = $"{a.ProcessName}  ({a.TcpConnections} TCP + {a.UdpEndpoints} UDP)" }).ToList();
-            }
-            catch { }
+            // Render into StackPanels (no inner ListView scroll). Each updater only repaints
+            // when the *visible text* changes and restores outer scroll offset, so rows
+            // 6/7 stay reachable and the page never snaps to day 1 on its own.
+            UpdateAdapters(all);
+            UpdateHistory();
+            UpdateTopApps();
+            UpdateApps();
             DrawGraph();
 
             // Live-apply toggles + dark mode (settings save takes effect without restart)
@@ -153,6 +165,95 @@ public sealed partial class MainWindow : Window
             _tray?.Update(down, up);
             _hud?.Update(down, up);
         });
+    }
+
+    // --- StackPanel updaters (fix for "history keeps snapping to day 1") ---
+    // Previously each tick replaced ListView.ItemsSource, which resets that ListView's
+    // internal VerticalOffset to 0. With 7 rows hidden behind MaxHeight the offset reset
+    // made days 6/7 unreachable. These updaters render plain TextBlocks into a
+    // StackPanel inside the single outer ScrollViewer (MainScroll), never create an
+    // inner scrollbar, compare *rendered strings* (not raw byte sums) and restore the
+    // outer offset after a repaint, so the page never scrolls on its own.
+
+    private void UpdateAdapters(IReadOnlyList<NetworkAdapterInfo> all)
+    {
+        var lines = all.Select(a =>
+            (a.IsUp ? "● " : "○ ") + $"{a.Name} — {a.Description}  ({(a.IsWiFi ? "WiFi" : a.IsEthernet ? "Ethernet" : "Other")})")
+            .ToArray();
+        RenderInto(AdapterPanel, ref _lastAdapterCsv, lines, saveOffset: true);
+    }
+
+    private void UpdateHistory()
+    {
+        var recent = _historyStore.Recent(7);
+        // Render newest day first is left as-is (oldest→newest matches earlier build);
+        // all 7 rows are now visible via outer scroll, no inner scrollbar needed.
+        var lines = recent.Select(r =>
+            $"{r.Date:ddd MMM dd}    {SpeedFormatter.FormatBytes(r.Down)} ↓    {SpeedFormatter.FormatBytes(r.Up)} ↑")
+            .ToArray();
+        RenderInto(HistoryPanel, ref _lastHistoryCsv, lines, saveOffset: true);
+    }
+
+    private void UpdateTopApps()
+    {
+        var top = _historyStore.TopApps(DateOnly.FromDateTime(DateTime.Now)).Take(5).ToList();
+        string[] lines;
+        if (top.Count == 0)
+        {
+            // Explicit placeholder so "blank" isn't a mystery — it means no attributed bytes yet.
+            lines = new[]
+            {
+                "No per-app data yet.",
+                "Keep “Track per-app usage” ON, browse/stream/Teams for ~1 min, then check back (data is estimated by connection share)."
+            };
+        }
+        else
+        {
+            lines = top.Select(t =>
+                $"{t.App}    {SpeedFormatter.FormatBytes(t.Down)} ↓    {SpeedFormatter.FormatBytes(t.Up)} ↑")
+                .ToArray();
+        }
+        RenderInto(TopAppsPanel, ref _lastTopCsv, lines, saveOffset: true);
+    }
+
+    private void UpdateApps()
+    {
+        var apps = _latestApps;
+        string[] lines;
+        if (apps.Count == 0)
+        {
+            lines = new[] { "No live connections detected (idle?)" };
+        }
+        else
+        {
+            lines = apps.Take(20).Select(a =>
+                $"{a.ProcessName}  ({a.TcpConnections} TCP + {a.UdpEndpoints} UDP)").ToArray();
+        }
+        RenderInto(AppPanel, ref _lastAppCsv, lines, saveOffset: true);
+    }
+
+    private void RenderInto(StackPanel panel, ref string lastCsv, string[] lines, bool saveOffset)
+    {
+        var csv = string.Join("\n", lines);
+        if (string.Equals(csv, lastCsv, StringComparison.Ordinal)) return; // unchanged → don't churn layout/scroll
+        var off = saveOffset ? MainScroll.VerticalOffset : 0;
+        panel.Children.Clear();
+        foreach (var line in lines)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = line,
+                TextWrapping = TextWrapping.Wrap,
+                Opacity = 0.9
+            });
+        }
+        lastCsv = csv;
+        if (saveOffset)
+        {
+            // Restoring the offset synchronously prevents the outer ScrollViewer from
+            // re-anchoring to the top when a child panel's height changes.
+            MainScroll.ChangeView(null, (float)off, 1f, true);
+        }
     }
 
     private void DrawGraph()
