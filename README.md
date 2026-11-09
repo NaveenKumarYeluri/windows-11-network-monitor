@@ -1,10 +1,16 @@
-# Windows 11 Network Monitor
+<p align="center">
+  <img src="docs/assets/icon-256.png" width="128" height="128" alt="Windows 11 Network Monitor icon" />
+</p>
 
-> A lightweight, modern network speed monitor for Windows 11. Shows live download/upload speed + graph on the taskbar (HUD) and in the system tray. Auto-detects WiFi, Ethernet and any other connection.
+<h1 align="center">Windows 11 Network Monitor</h1>
 
-[![Build](https://github.com/NaveenKumarYeluri/windows-11-network-monitor/actions/workflows/build.yml/badge.svg)](https://github.com/NaveenKumarYeluri/windows-11-network-monitor/actions/workflows/build.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2011%20%7C%2010-blue)](https://www.microsoft.com/windows)
+<p align="center"><b>Windows 11 Network Monitor</b> — a lightweight, modern network speed monitor for Windows 11 and Windows 10 (1809+). Shows live download/upload speed + graph on the taskbar (HUD) and in the system tray. Auto-detects WiFi, Ethernet, USB tethering, mobile hotspot and any other connection, with per-app usage and per-day history.</p>
+
+<p align="center">
+  <a href="https://github.com/NaveenKumarYeluri/windows-11-network-monitor/actions/workflows/build.yml"><img src="https://github.com/NaveenKumarYeluri/windows-11-network-monitor/actions/workflows/build.yml/badge.svg" alt="Build" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
+  <a href="https://www.microsoft.com/windows"><img src="https://img.shields.io/badge/Platform-Windows%2011%20%7C%2010-blue" alt="Platform" /></a>
+</p>
 
 ## Why
 
@@ -38,25 +44,24 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 - [NET 8 SDK](https://dotnet.microsoft.com/download) (for building from source)
 - No admin rights required
 
-## Try It
+## Install
 
-### Option A — Download a release (recommended)
+This app ships as an **unpackaged folder build** (single-file WinUI does not work reliably). Keep the whole folder together.
 
-1. Go to [Releases](../../releases)
-2. Download `Windows11NetworkMonitor-win-x64.zip`
-3. Unzip, run `Windows11NetworkMonitor.exe`
+### Option A — Download a build (recommended)
+1. Go to [Actions → Build](../../actions) and pick the latest green run
+2. Download the artifact `Windows11NetworkMonitor-win-x64-<sha>.zip`
+3. Unzip to e.g. `%LOCALAPPDATA%\Programs\Windows11NetworkMonitor\` (no admin needed) or `C:\Program Files\Windows11NetworkMonitor\`
+4. Run `Windows11NetworkMonitor.exe` from that folder (SmartScreen: **More info → Run anyway**)
+5. Right-click the `.exe` → **Send to → Desktop (create shortcut)** and enable **Start with Windows** in Settings. Pin the tray icon via **Settings → Personalization → Taskbar → Other system tray icons** (Win11 hides it under `^` by default).
 
 ### Option B — Build from source
-
 ```powershell
 git clone https://github.com/NaveenKumarYeluri/windows-11-network-monitor.git
 cd windows-11-network-monitor
 dotnet build Windows11NetworkMonitor.sln -c Release
-# or publish a single-file build:
-dotnet publish src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj -c Release -r win-x64 --self-contained
 ```
-
-CI builds are available as artifacts on every push (see Actions tab).
+CI builds are available as artifacts on every push (see Actions tab). Releases are being migrated to the same folder packaging.
 
 ## Usage
 
@@ -95,11 +100,11 @@ WifiService (wlanapi) → SSID + signal
 | Layer        | Choice                                      |
 | ------------ | ------------------------------------------- |
 | Language     | C# .NET 8                                   |
-| UI           | WinUI 3 (Windows App SDK 1.5)               |
+| UI           | WinUI 3 (Windows App SDK 1.7.250310001)      |
 | Network      | `System.Net.NetworkInformation` + Win32 `iphlpapi` / `wlanapi` |
 | Graph        | Custom Canvas/Polyline (v1, zero deps) — LiveChartsCore planned |
 | Build        | GitHub Actions (`windows-latest`)           |
-| Packaging    | Unpackaged single-file WinExe (MSIX planned) |
+| Packaging    | Unpackaged self-contained **folder** WinExe (single-file WinUI crashes with `0x80040111`), MSIX planned |
 
 ## Contributing
 
@@ -112,8 +117,33 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). PRs welcome — focus on:
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Copyright © 2026 Naveen Kumar Yeluri.
+
+## Icon
+
+`src/Windows11NetworkMonitor/Assets/NetworkMonitor.ico` (multi-size) + `NetworkMonitor-*.png` + editable `NetworkMonitor.svg`. The icon shows live up/down arrows with a pulse line on a blue→violet rounded square — download (cyan) and upload (orange) to match the graph colors. Generated with Pillow (supersampled antialiasing) from the SVG source.
+
+## Built with AI assistance
+
+This project was built with **AI (Claude Spark / OpenCode via Crouton Alpha, Meta AI)** — the assistant generated the initial scaffold, WinUI XAML/C# implementation, CI workflows, and icon assets, then iterated with the human maintainer through testing (tray/HUD behaviour, scroll bugs, per-app attribution). Every AI suggestion was reviewed, tested and committed by the maintainer. No third-party code was copied verbatim; all dependencies are NuGet packages under their own licenses (below). Human-authored code, product decisions and release choices remain the maintainer's.
+
+Suggested citation: *Naveen Kumar Yeluri (2026), Windows 11 Network Monitor, MIT.*
 
 ## Acknowledgments
 
-Inspired by TrafficMonitor, XMeters and GlassWire. Windows 11 taskbar HUD approach follows the documented `SHAppBarMessage` + transparent topmost window pattern.
+**Original work:** All application code in `src/` (MainWindow, Settings, HUD, tray, adapter polling, history, per-app estimator) was written for this project — see git history. No code was copied from existing monitors.
+
+**Inspiration / concepts (no code reused):**
+- TrafficMonitor, GlassWire, XMeters — for feature inspiration only.
+- Windows 11 taskbar HUD approach follows the documented `SHAppBarMessage` + transparent topmost window pattern and Microsoft's WinUI 3 / Windows App SDK guidance (custom taskbar applets are not supported on Win11).
+
+**Dependencies (NuGet, used as binaries — not copied into source):**
+- `.NET 8` (runtime/SDK) — MIT
+- `Microsoft.WindowsAppSDK 1.7.250310001` (WinUI 3) — MIT
+- `CommunityToolkit.Mvvm 8.2.2` (`ObservableObject`) — MIT
+- `System.Drawing.Common 8.0.0` (tray icon drawing) — MIT
+- `System.Management 8.0.0` — MIT
+
+**System APIs used (no code copied):** `System.Net.NetworkInformation`, Win32 `iphlpapi.dll` (`GetExtendedTcpTable` for per-process connection enumeration), `wlanapi.dll` (Wi-Fi SSID/signal), `shell32.dll` (`Shell_NotifyIcon`).
+
+Per-app byte counts are **estimates proportional to open-connection count** — the shipped build does not bundle a WFP driver. Windows byte-accurate attribution would require an admin ETW/WFP callout (future work).

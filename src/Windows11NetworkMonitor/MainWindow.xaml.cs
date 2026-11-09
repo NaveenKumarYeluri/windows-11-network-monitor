@@ -49,6 +49,7 @@ public sealed partial class MainWindow : Window
         _historyStore.Prune(_settings.HistoryRetentionDays);
         InitializeComponent();
         Title = "Windows 11 Network Monitor";
+        SetWindowIcon();
         ((FrameworkElement)Content).RequestedTheme = GetWantTheme();
         AppWindow.Resize(new SizeInt32(1180, 640));
         AppWindow.Closing += AppWindow_Closing;
@@ -324,6 +325,16 @@ public sealed partial class MainWindow : Window
         ShowSettings();
         // Move focus off the button so it doesn't keep a persistent "pressed/focused" accent state
         Nav.Focus(FocusState.Programmatic);
+    }
+
+    private void SetWindowIcon()
+    {
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Assets", "NetworkMonitor.ico");
+            if (System.IO.File.Exists(path)) AppWindow.SetIcon(path);
+        }
+        catch { }
     }
 
     private ElementTheme GetWantTheme()

@@ -15,6 +15,14 @@
     <LangVersion>12</LangVersion>
     <RootNamespace>Windows11NetworkMonitor</RootNamespace>
     <AssemblyName>Windows11NetworkMonitor</AssemblyName>
+    <ApplicationIcon>Assets\NetworkMonitor.ico</ApplicationIcon>
+    <Company>Naveen Kumar Yeluri</Company>
+    <Product>Windows 11 Network Monitor</Product>
+    <Description>Live network speed monitor for Windows 11 — WiFi, Ethernet and any connection, with taskbar HUD, per-app history and 60-second graph.</Description>
+    <Copyright>© 2026 Naveen Kumar Yeluri</Copyright>
+    <Version>1.0.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250310001" />
@@ -24,6 +32,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Update="Assets\DefaultSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\NetworkMonitor.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\NetworkMonitor-256.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\NetworkMonitor-128.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\NetworkMonitor-64.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

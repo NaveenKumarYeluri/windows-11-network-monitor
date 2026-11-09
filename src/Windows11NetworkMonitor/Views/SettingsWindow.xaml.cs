@@ -22,6 +22,7 @@ public sealed partial class SettingsWindow : Window
         _adapters = adapters;
         InitializeComponent();
         Title = "Settings";
+        SetWindowIcon();
         // Settings dialog stays Light so controls remain readable regardless of Main dark/light choice
         ((FrameworkElement)Content).RequestedTheme = ElementTheme.Light;
         AppWindow.Resize(new SizeInt32(620, 640));
@@ -99,5 +100,15 @@ public sealed partial class SettingsWindow : Window
     public void BringToFront()
     {
         Activate();
+    }
+
+    private void SetWindowIcon()
+    {
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Assets", "NetworkMonitor.ico");
+            if (System.IO.File.Exists(path)) AppWindow.SetIcon(path);
+        }
+        catch { }
     }
 }
