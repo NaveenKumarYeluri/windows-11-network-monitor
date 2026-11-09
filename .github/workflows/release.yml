@@ -31,7 +31,9 @@ jobs:
         run: msbuild src/Windows11NetworkMonitor/Windows11NetworkMonitor.csproj /p:Configuration=Release /p:Platform=x64 /p:RuntimeIdentifier=win-x64 /p:SelfContained=true /p:WindowsAppSDKSelfContained=true /p:PublishDir=./publish/ /t:Publish /verbosity:m
 
       - name: Zip release package
-        run: Compress-Archive -Path ./publish/* -DestinationPath ./windows-11-network-monitor-${{ github.ref_name }}-win-x64.zip -Force
+        # PublishDir is relative to the project dir (msbuild behavior), so the
+        # output lands in src/Windows11NetworkMonitor/publish — not repo root.
+        run: Compress-Archive -Path ./src/Windows11NetworkMonitor/publish/* -DestinationPath ./windows-11-network-monitor-${{ github.ref_name }}-win-x64.zip -Force
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
