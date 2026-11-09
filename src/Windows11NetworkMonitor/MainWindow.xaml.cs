@@ -127,7 +127,9 @@ public sealed partial class MainWindow : Window
             try
             {
                 var appsNow = _perAppTracker.TrackPerApp ? _perAppTracker.Snapshot() : Array.Empty<AppUsage>();
-                if (!appsNow.SequenceEqual(AppList.ItemsSource as IEnumerable<AppUsage>))
+                var prev = AppList.ItemsSource as IEnumerable<AppUsage>;
+                var same = prev is not null && ReferenceEquals(prev, appsNow);
+                if (!same)
                     AppList.ItemsSource = appsNow.Select(a => new { a.ProcessName, a.TcpConnections, a.UdpEndpoints, a.TotalConnections, Display = $"{a.ProcessName}  ({a.TcpConnections} TCP + {a.UdpEndpoints} UDP)" }).ToList();
             }
             catch { }
