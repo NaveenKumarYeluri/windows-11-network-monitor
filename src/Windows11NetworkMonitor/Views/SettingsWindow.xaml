@@ -30,6 +30,21 @@
             </StackPanel>
 
             <StackPanel Spacing="6">
+                <TextBlock Text="Taskbar HUD dock" FontWeight="SemiBold" />
+                <ComboBox x:Name="HudDockCombo" MinWidth="280" HorizontalAlignment="Stretch">
+                    <ComboBoxItem Content="Bottom (end near system tray)" Tag="Bottom" />
+                    <ComboBoxItem Content="Top" Tag="Top" />
+                    <ComboBoxItem Content="Left" Tag="Left" />
+                    <ComboBoxItem Content="Right" Tag="Right" />
+                </ComboBox>
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <NumberBox x:Name="HudOffsetXBox" Header="Horizontal offset (DIP, ±)" Minimum="-500" Maximum="500" SpinButtonPlacementMode="Inline" MinWidth="150" />
+                    <NumberBox x:Name="HudOffsetYBox" Header="Vertical offset (DIP, ±)" Minimum="-500" Maximum="500" SpinButtonPlacementMode="Inline" MinWidth="150" />
+                </StackPanel>
+                <TextBlock Text="Side of the taskbar the HUD docks to, plus fine-tuning offsets (±500 DIP, DPI-scaled). Changes apply to the HUD the moment you Save — no restart." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Spacing="6">
                 <TextBlock Text="Usage history retention (days)" FontWeight="SemiBold" />
                 <NumberBox x:Name="HistoryRetentionBox" Minimum="0" Maximum="365" Value="90" SpinButtonPlacementMode="Inline" />
                 <TextBlock Text="How long to keep daily download/upload totals. 90 days = 3 months, 180 days = 6 months, 0 = keep forever. Old days are pruned automatically." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />

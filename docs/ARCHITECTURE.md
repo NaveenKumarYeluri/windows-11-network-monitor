@@ -53,6 +53,5 @@ Windows exposes no per-socket byte counters to user mode. `PerAppTracker` enumer
 
 - Full WLAN SSID + signal (`wlanapi.dll` `WlanQueryInterface` CURRENT_CONNECTION parsing — the early stub was removed)
 - LiveChartsCore graph (zoom/tooltips) — the current Canvas/Polyline is zero-dependency by design
-- HUD dock/alignment UI (Top/Left/Right + offsets already supported internally via `HudDock`/`HudOffset*`)
 - MSIX + Store signing
 - Byte-accurate per-app attribution via WFP/ETW (admin)

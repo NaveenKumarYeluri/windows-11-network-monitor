@@ -21,11 +21,12 @@
 ### Unreleased
 - [x] Export history to CSV (Settings → writes device + per-app daily totals to
       `%LOCALAPPDATA%\...\exports\*.csv`, UTF-8 BOM, opens the folder in Explorer)
+- [x] HUD dock UI (Settings: Bottom/Top/Left/Right side + ±500 DIP offsets, applied
+      live on Save; Left/Right docks center the HUD vertically over the taskbar)
 
 ## Next
 - [ ] Screenshots under `docs/screenshots/`
 - [ ] Full WLAN SSID + signal % via `WlanQueryInterface` CURRENT_CONNECTION (surface in Dashboard)
-- [ ] HUD dock/alignment UI (Top/Left/Right + offsets already in `AppSettings`)
 - [ ] LiveChartsCore graph (zoom, tooltips, fill)
 - [ ] Native `GetIfTable2` path (64-bit counters, link speed)
 - [ ] MSIX package + signing for Store

@@ -104,10 +104,13 @@ public static class TaskbarHudPosition
                 pos = new Windows.Graphics.PointInt32(x + 8 + ox, y + Math.Max(0, (th - size.Height) / 2) + oy);
                 break;
             case "Left":
-                pos = new Windows.Graphics.PointInt32(x + ox, y + 8 + oy);
-                break;
             case "Right":
-                pos = new Windows.Graphics.PointInt32(x + tw - size.Width - 8 + ox, y + 8 + oy);
+                // Vertical-centered like Top/Bottom so the HUD floats over the
+                // taskbar strip (vertical taskbars are tall; bottom taskbars
+                // clamp the same as Top/Bottom via Max(0, ...)).
+                pos = new Windows.Graphics.PointInt32(
+                    dock == "Left" ? x + 8 + ox : x + tw - size.Width - 8 + ox,
+                    y + Math.Max(0, (th - size.Height) / 2) + oy);
                 break;
             default: // Bottom (Windows 11) - dock at right, just left of system tray (clear of ^ overflow)
                 pos = new Windows.Graphics.PointInt32(x + tw - size.Width - 190 + ox, y + Math.Max(0, (th - size.Height) / 2) + oy);
