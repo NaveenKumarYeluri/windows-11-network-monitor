@@ -14,11 +14,10 @@ public sealed class AppUsage
 }
 
 /// <summary>
-/// Best-effort per-app visibility without a kernel driver: enumerates
-/// TCP/UDP owner PIDs via GetExtendedTcpTable, then attributes a share of
-/// each interface's byte delta proportionally by open-connection count.
-/// Not byte-accurate like WFP, but needs no admin rights and is free.
-/// If <c>trackPerApp</c> is false, no snapshot is produced.
+/// Enumerates TCP/UDP owner PIDs via GetExtendedTcpTable. Matches process
+/// names via Process.GetProcessById, falling back to "PID N" for protected
+/// processes (System / elevated) without dropping the row — otherwise most
+/// machines look empty. Per-app bytes remain an estimate (share by conn count).
 /// </summary>
 public sealed class PerAppTracker
 {
@@ -29,6 +28,7 @@ public sealed class PerAppTracker
     private const int UDP_TABLE_OWNER_PID = 2;
     private const int AF_INET = 2;
     private const int AF_INET6 = 23;
+    private const uint ERROR_INSUFFICIENT_BUFFER = 122;
 
     public bool TrackPerApp { get; set; } = true;
 
@@ -46,7 +46,7 @@ public sealed class PerAppTracker
         {
             string name;
             try { name = Process.GetProcessById(kv.Key).ProcessName; }
-            catch { name = kv.Key == 0 ? "System" : kv.Key == 4 ? "System" : $"PID {kv.Key}"; }
+            catch { name = kv.Key == 0 || kv.Key == 4 ? "System" : $"PID {kv.Key}"; }
             list.Add(new AppUsage
             {
                 Pid = kv.Key,
@@ -64,21 +64,19 @@ public sealed class PerAppTracker
         {
             int size = 0;
             var rc = GetExtendedTcpTable(IntPtr.Zero, ref size, false, af, TCP_TABLE_OWNER_PID, 0);
-            if (rc != 0 || size <= 0) return;
+            // First call returns ERROR_INSUFFICIENT_BUFFER with required size
+            if (rc != ERROR_INSUFFICIENT_BUFFER && rc != 0) return;
+            if (size <= 0) return;
             var buf = Marshal.AllocHGlobal(size);
             try
             {
                 rc = GetExtendedTcpTable(buf, ref size, false, af, TCP_TABLE_OWNER_PID, 0);
                 if (rc != 0) return;
                 int n = Marshal.ReadInt32(buf);
-                // TCP table row: dwLocalAddr(4) dwLocalPort(4) dwRemoteAddr(4) dwRemotePort(4) dwState(4) dwOwningPid(4)
-                // IPv6 row is larger (28 bytes): dwLocalAddr[4](16) dwLocalPort(4) dwLocalScopeId(4) dwRemoteAddr[4](16) dwRemotePort(4) dwState(4) dwOwningPid(4) = 52? MibTcp6row OwnerPid layout differs.
-                // Use the AF-specific stride: 24 for IPv4, 56 for IPv6 (sizeof MIB_TCPROW_OWNER_PID / MIB_TCP6ROW_OWNER_PID).
                 int stride = af == AF_INET6 ? 56 : 24;
                 for (int i = 0; i < n; i++)
                 {
-                    long rowOff = (af == AF_INET6 ? 4 : 4) + i * (long)stride;
-                    // OwningPid is last DWORD in both IPv4/IPv6 owner rows.
+                    long rowOff = 4L + i * stride;
                     int pidOff = (int)(rowOff + (af == AF_INET6 ? 52 : 20));
                     if (pidOff + 4 > size) break;
                     var pid = Marshal.ReadInt32(buf, pidOff);
@@ -99,14 +97,14 @@ public sealed class PerAppTracker
         {
             int size = 0;
             var rc = GetExtendedTcpTable(IntPtr.Zero, ref size, false, af, UDP_TABLE_OWNER_PID, 0);
-            if (rc != 0 || size <= 0) return;
+            if (rc != ERROR_INSUFFICIENT_BUFFER && rc != 0) return;
+            if (size <= 0) return;
             var buf = Marshal.AllocHGlobal(size);
             try
             {
                 rc = GetExtendedTcpTable(buf, ref size, false, af, UDP_TABLE_OWNER_PID, 0);
                 if (rc != 0) return;
                 int n = Marshal.ReadInt32(buf);
-                // UDP row: dwLocalAddr(4) dwLocalPort(4) dwOwningPid(4) = 12 bytes IPv4; IPv6: dwLocalAddr[4](16) dwLocalPort(4) dwLocalScopeId(4) dwOwningPid(4) = 28
                 int stride = af == AF_INET6 ? 28 : 12;
                 for (int i = 0; i < n; i++)
                 {

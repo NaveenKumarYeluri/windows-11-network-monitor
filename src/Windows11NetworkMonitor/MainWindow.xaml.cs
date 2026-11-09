@@ -19,6 +19,7 @@ public sealed partial class MainWindow : Window
     private readonly PerAppTracker _perAppTracker = new();
     private readonly SpeedHistory _history = new();
     private int _pollTick;
+    private string _lastHistorySig = string.Empty;
     private readonly PeriodicTimer _latencyTimer = new(TimeSpan.FromSeconds(3));
     private double _lastDown, _lastUp;
     private long _latencyMs = -1;
@@ -107,11 +108,21 @@ public sealed partial class MainWindow : Window
             DailyText.Text = $"{SpeedFormatter.FormatBytes(_settings.DailyDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.DailyUploadBytes)}";
             PeakText.Text = $"{SpeedFormatter.Format(_history.PeakDownloadBps)} / {SpeedFormatter.Format(_history.PeakUploadBps)} / {SpeedFormatter.Format(_history.AvgDownloadBps)}";
             AdapterList.ItemsSource = all;
-            // Throttle history lists — recreating them every 1s tick resets ListView scroll (can't see day 6/7)
-            if (_pollTick % 30 == 0)
+            // Throttle history lists — only refresh when data actually changes, otherwise
+            // ListView resets its scroll so you can never reach day 6/7.
+            var recent = _historyStore.Recent(7);
+            var top = _historyStore.TopApps(DateOnly.FromDateTime(DateTime.Now)).Take(5).ToList();
+            var sig = $"{_historyStore.Recent(7).Sum(r => r.Down + r.Up)}|{top.Sum(t => t.Down + t.Up)}|{top.Count}";
+            if (sig != _lastHistorySig && _pollTick > 2)
             {
-                HistoryList.ItemsSource = _historyStore.Recent(7).Select(r => new { Date = r.Date.ToString("ddd MMM dd"), Down = SpeedFormatter.FormatBytes(r.Down) + " ↓", Up = SpeedFormatter.FormatBytes(r.Up) + " ↑" }).ToList();
-                TopAppsList.ItemsSource = _historyStore.TopApps(DateOnly.FromDateTime(DateTime.Now)).Take(5).Select(t => new { App = t.App, Down = SpeedFormatter.FormatBytes(t.Down) + " ↓", Up = SpeedFormatter.FormatBytes(t.Up) + " ↑" }).ToList();
+                _lastHistorySig = sig;
+                HistoryList.ItemsSource = recent.Select(r => new { Date = r.Date.ToString("ddd MMM dd"), Down = SpeedFormatter.FormatBytes(r.Down) + " ↓", Up = SpeedFormatter.FormatBytes(r.Up) + " ↑" }).ToList();
+                TopAppsList.ItemsSource = top.Select(t => new { App = t.App, Down = SpeedFormatter.FormatBytes(t.Down) + " ↓", Up = SpeedFormatter.FormatBytes(t.Up) + " ↑" }).ToList();
+            }
+            else if (_pollTick <= 2)
+            {
+                HistoryList.ItemsSource = recent.Select(r => new { Date = r.Date.ToString("ddd MMM dd"), Down = SpeedFormatter.FormatBytes(r.Down) + " ↓", Up = SpeedFormatter.FormatBytes(r.Up) + " ↑" }).ToList();
+                TopAppsList.ItemsSource = top.Select(t => new { App = t.App, Down = SpeedFormatter.FormatBytes(t.Down) + " ↓", Up = SpeedFormatter.FormatBytes(t.Up) + " ↑" }).ToList();
             }
             try
             {
