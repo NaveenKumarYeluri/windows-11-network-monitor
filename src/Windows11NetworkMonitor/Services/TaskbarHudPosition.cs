@@ -35,6 +35,9 @@ public static class TaskbarHudPosition
     [DllImport("user32.dll")]
     private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
 
+    [DllImport("user32.dll")]
+    private static extern int GetDpiForWindow(IntPtr hwnd);
+
     [StructLayout(LayoutKind.Sequential)]
     private struct MONITORINFO
     {
@@ -49,6 +52,7 @@ public static class TaskbarHudPosition
     private const uint ABE_LEFT = 0, ABE_TOP = 1, ABE_RIGHT = 2, ABE_BOTTOM = 3;
     private const uint ABS_AUTOHIDE = 0x1;
     private const uint MONITOR_DEFAULTTOPRIMARY = 1;
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
 
     public static (int x, int y, int width, int height, bool autoHide) GetTaskbarBounds(IntPtr hwnd, string dock)
     {
@@ -60,7 +64,9 @@ public static class TaskbarHudPosition
         SHAppBarMessage(ABM_GETTASKBARPOS, ref pos);
 
         var mon = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
-        var hMonitor = MonitorFromWindow(hwnd == IntPtr.Zero ? IntPtr.Zero : hwnd, MONITOR_DEFAULTTOPRIMARY);
+        // NEAREST (not PRIMARY): on multi-monitor setups the HUD should dock to
+        // the taskbar of the monitor it lives on, not always the primary one.
+        var hMonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
         GetMonitorInfo(hMonitor, ref mon);
 
         RECT rc = pos.rc;
@@ -77,25 +83,34 @@ public static class TaskbarHudPosition
         return (rc.Left, rc.Top, w, h, autoHide);
     }
 
-    public static void Dock(AppWindow window, string dock, int offsetX, int offsetY)
+    /// <summary>
+    /// Docks a window over the taskbar. Settings offsets are treated as DIPs
+    /// (as documented) and scaled to physical pixels by the window's DPI,
+    /// so placement is consistent at 125%/150% scaling.
+    /// </summary>
+    public static void Dock(AppWindow window, IntPtr hwnd, IntPtr topmostHwnd, string dock, int offsetX, int offsetY)
     {
-        var (x, y, tw, th, _) = GetTaskbarBounds(IntPtr.Zero, dock);
+        var (x, y, tw, th, _) = GetTaskbarBounds(hwnd, dock);
         var size = window.Size;
+        var dpi = topmostHwnd != IntPtr.Zero ? GetDpiForWindow(topmostHwnd) : 96;
+        var scale = dpi <= 0 ? 1.0 : dpi / 96.0;
+        var ox = (int)Math.Round(offsetX * scale);
+        var oy = (int)Math.Round(offsetY * scale);
         var pos = new Windows.Graphics.PointInt32();
 
         switch (dock)
         {
             case "Top":
-                pos = new Windows.Graphics.PointInt32(x + 8 + offsetX, y + Math.Max(0, (th - size.Height) / 2) + offsetY);
+                pos = new Windows.Graphics.PointInt32(x + 8 + ox, y + Math.Max(0, (th - size.Height) / 2) + oy);
                 break;
             case "Left":
-                pos = new Windows.Graphics.PointInt32(x + offsetX, y + 8 + offsetY);
+                pos = new Windows.Graphics.PointInt32(x + ox, y + 8 + oy);
                 break;
             case "Right":
-                pos = new Windows.Graphics.PointInt32(x + tw - size.Width - 8 + offsetX, y + 8 + offsetY);
+                pos = new Windows.Graphics.PointInt32(x + tw - size.Width - 8 + ox, y + 8 + oy);
                 break;
             default: // Bottom (Windows 11) - dock at right, just left of system tray (clear of ^ overflow)
-                pos = new Windows.Graphics.PointInt32(x + tw - size.Width - 190 + offsetX, y + Math.Max(0, (th - size.Height) / 2) + offsetY);
+                pos = new Windows.Graphics.PointInt32(x + tw - size.Width - 190 + ox, y + Math.Max(0, (th - size.Height) / 2) + oy);
                 break;
         }
         window.Move(pos);

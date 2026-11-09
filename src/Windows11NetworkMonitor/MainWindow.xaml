@@ -67,7 +67,7 @@
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <StackPanel Spacing="8">
-                        <TextBlock Text="Live graph (last 60 s)" FontWeight="SemiBold" />
+                        <TextBlock Text="Live graph (last minute)" FontWeight="SemiBold" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="64" />

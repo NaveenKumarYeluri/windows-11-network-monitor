@@ -2,38 +2,51 @@ using Windows11NetworkMonitor.Models;
 
 namespace Windows11NetworkMonitor.Services;
 
-/// <summary>Fixed-size ring buffer of speed samples for the graph (default 120 x 0.5s = 60s).</summary>
+/// <summary>
+/// Fixed-size ring buffer of speed samples for the graph. Capacity is chosen at
+/// startup to hold ~60 s of samples (60 000 ms / poll interval, clamped 30-240),
+/// so the "last minute" window stays true even when the poll interval changes.
+/// </summary>
 public sealed class SpeedHistory
 {
     private readonly Queue<SpeedSample> _samples = new();
     private readonly int _capacity;
+    // Writes happen on the poll timer thread, while the UI thread reads the
+    // samples for rendering — internal non-thread-safe collections need a lock.
+    private readonly object _sync = new();
 
-    public IReadOnlyList<SpeedSample> Samples => _samples.ToArray();
+    public IReadOnlyList<SpeedSample> Samples { get { lock (_sync) return _samples.ToArray(); } }
     public double PeakDownloadBps { get; private set; }
     public double PeakUploadBps { get; private set; }
     public double AvgDownloadBps { get; private set; }
     public double AvgUploadBps { get; private set; }
 
-    public SpeedHistory(int capacity = 120) => _capacity = capacity;
+    public SpeedHistory(int capacity = 60) => _capacity = Math.Max(1, capacity);
 
     public void Add(SpeedSample sample)
     {
-        _samples.Enqueue(sample);
-        while (_samples.Count > _capacity) _samples.Dequeue();
-
-        PeakDownloadBps = Math.Max(PeakDownloadBps, sample.DownloadBps);
-        PeakUploadBps = Math.Max(PeakUploadBps, sample.UploadBps);
-        if (_samples.Count > 0)
+        lock (_sync)
         {
-            AvgDownloadBps = _samples.Average(s => s.DownloadBps);
-            AvgUploadBps = _samples.Average(s => s.UploadBps);
+            _samples.Enqueue(sample);
+            while (_samples.Count > _capacity) _samples.Dequeue();
+
+            PeakDownloadBps = Math.Max(PeakDownloadBps, sample.DownloadBps);
+            PeakUploadBps = Math.Max(PeakUploadBps, sample.UploadBps);
+            if (_samples.Count > 0)
+            {
+                AvgDownloadBps = _samples.Average(s => s.DownloadBps);
+                AvgUploadBps = _samples.Average(s => s.UploadBps);
+            }
         }
     }
 
     public void ResetPeaks()
     {
-        PeakDownloadBps = 0;
-        PeakUploadBps = 0;
+        lock (_sync)
+        {
+            PeakDownloadBps = 0;
+            PeakUploadBps = 0;
+        }
     }
 }
 
@@ -44,7 +57,7 @@ public static class SpeedFormatter
         if (bytesPerSecond < 1024) return $"{bytesPerSecond:F0} B/s";
         if (bytesPerSecond < 1024 * 1024) return $"{bytesPerSecond / 1024:F1} KB/s";
         if (bytesPerSecond < 1024 * 1024 * 1024) return $"{bytesPerSecond / (1024 * 1024):F1} MB/s";
-        return $"{bytesPerSecond / (1024 * 1024 * 1024):F2} GB/s";
+        return $"{bytesPerSecond / (1024L * 1024 * 1024):F2} GB/s";
     }
 
     public static string FormatBytes(long bytes)

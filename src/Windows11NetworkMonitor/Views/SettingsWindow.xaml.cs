@@ -12,10 +12,6 @@ public sealed partial class SettingsWindow : Window
     private readonly SettingsService _store = new();
     private readonly HistoryStore _history = new();
 
-    public SettingsWindow() : this(new AppSettings(), Array.Empty<NetworkAdapterInfo>())
-    {
-    }
-
     public SettingsWindow(AppSettings settings, IReadOnlyList<NetworkAdapterInfo> adapters)
     {
         _settings = settings;
@@ -93,7 +89,7 @@ public sealed partial class SettingsWindow : Window
         _history.Load();
         _history.Prune(_settings.HistoryRetentionDays);
         // Keep Settings dialog Light — MainWindow picks up ThemeMode on its next tick
-        StatusText.Text = "Saved. Restart the app to apply poll interval / adapter.";
+        StatusText.Text = "Saved. Adapter mode applies immediately; poll interval takes effect after restart.";
         AdapterModeCombo.Focus(FocusState.Programmatic);
     }
 

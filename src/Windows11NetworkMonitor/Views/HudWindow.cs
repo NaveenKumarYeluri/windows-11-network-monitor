@@ -54,7 +54,7 @@ public sealed class HudWindow : Window
         };
         root.Children.Add(_speedText);
         Content = root;
-        ApplyTheme();
+        UpdateThemeColors();
 
         AppWindow.Resize(new Windows.Graphics.SizeInt32(150, 28));
         AppWindow.SetPresenter(OverlappedPresenter.Create());
@@ -73,7 +73,9 @@ public sealed class HudWindow : Window
         Activated += (_, _) => Reposition();
     }
 
-    private void ApplyTheme()
+    private string _lastThemeKey = string.Empty;
+
+    private void UpdateThemeColors()
     {
         var root = (Grid)Content;
         var mode = string.IsNullOrWhiteSpace(_settings.ThemeMode) ? (_settings.DarkMode ? "Dark" : "System") : _settings.ThemeMode;
@@ -92,6 +94,10 @@ public sealed class HudWindow : Window
             "Light" => false,
             _ => resolved == ElementTheme.Dark
         };
+        var key = $"{mode}:{resolved}";
+        if (key == _lastThemeKey) return; // nothing changed → don't churn brushes
+        _lastThemeKey = key;
+
         root.Background = new SolidColorBrush(isDark ? Colors.Black : Colors.White) { Opacity = isDark ? 0.7 : 0.85 };
         _speedText.Foreground = new SolidColorBrush(isDark ? Colors.White : Colors.Black);
     }
@@ -100,8 +106,6 @@ public sealed class HudWindow : Window
     {
         try
         {
-            ApplyTheme();
-            TaskbarHudPositionDock();
             // Re-assert TOPMOST (WinUI's IsAlwaysOnTop alone drops when other apps activate)
             var hwnd = FindWindow(null, "HUD");
             if (hwnd != IntPtr.Zero)
@@ -110,14 +114,13 @@ public sealed class HudWindow : Window
                 SetWindowLong(hwnd, GWL_EXSTYLE, ex | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
                 SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
             }
+            var hwndSelf = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            TaskbarHudPosition.Dock(AppWindow, hwndSelf, hwnd, _settings.HudDock, _settings.HudOffsetX, _settings.HudOffsetY);
+            // Theme colors only need refresh when the resolved theme changes
+            // (twice-per-second brush churn was pointless allocation).
+            UpdateThemeColors();
         }
         catch { }
-    }
-
-    private void TaskbarHudPositionDock()
-    {
-        // Keep it simple: dock via service
-        Windows11NetworkMonitor.Services.TaskbarHudPosition.Dock(AppWindow, _settings.HudDock, _settings.HudOffsetX, _settings.HudOffsetY);
     }
 
     public void Update(double downBps, double upBps)

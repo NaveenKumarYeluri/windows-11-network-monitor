@@ -12,6 +12,9 @@ public sealed class HistoryStore
     private Dictionary<string, DayUsage> _data = new();
     private Dictionary<string, Dictionary<string, DayUsage>> _perApp = new();
     private int _writesSinceSave;
+    // Single lock guarding _data/_perApp: writes come from the poll timer thread,
+    // reads (Recent/TopApps) and Save come from the UI thread.
+    private readonly object _sync = new();
 
     public sealed class DayUsage
     {
@@ -27,38 +30,47 @@ public sealed class HistoryStore
 
     public void Load()
     {
-        try
+        lock (_sync)
         {
-            if (!System.IO.File.Exists(FilePath)) return;
-            var json = System.IO.File.ReadAllText(FilePath);
-            // New nested shape first
-            var nested = JsonSerializer.Deserialize<HistoryFile>(json, JsonOpts);
-            if (nested is not null && (nested.Days.Count > 0 || nested.Apps.Count > 0))
+            try
             {
-                _data = nested.Days ?? new();
-                _perApp = nested.Apps ?? new();
-                return;
+                if (!System.IO.File.Exists(FilePath)) return;
+                var json = System.IO.File.ReadAllText(FilePath);
+                // New nested shape first
+                var nested = JsonSerializer.Deserialize<HistoryFile>(json, JsonOpts);
+                if (nested is not null && (nested.Days.Count > 0 || nested.Apps.Count > 0))
+                {
+                    _data = nested.Days ?? new();
+                    _perApp = nested.Apps ?? new();
+                    return;
+                }
+                // Legacy flat shape { "2026-01-01": { DownloadBytes, UploadBytes } }
+                _data = JsonSerializer.Deserialize<Dictionary<string, DayUsage>>(json, JsonOpts) ?? new();
             }
-            // Legacy flat shape { "2026-01-01": { DownloadBytes, UploadBytes } }
-            _data = JsonSerializer.Deserialize<Dictionary<string, DayUsage>>(json, JsonOpts) ?? new();
+            catch { _data = new(); }
         }
-        catch { _data = new(); }
     }
 
     public void AddDelta(long downDelta, long upDelta)
     {
         if (downDelta == 0 && upDelta == 0) return;
-        AddDay(_data, DateOnly.FromDateTime(DateTime.Now), downDelta, upDelta);
-        if (++_writesSinceSave >= 30) Save();
+        lock (_sync)
+        {
+            AddDay(_data, DateOnly.FromDateTime(DateTime.Now), downDelta, upDelta);
+            if (++_writesSinceSave >= 30) Save();
+        }
     }
 
     public void AddPerAppDelta(string app, long downDelta, long upDelta)
     {
         if (string.IsNullOrWhiteSpace(app) || (downDelta == 0 && upDelta == 0)) return;
-        var key = DateOnly.FromDateTime(DateTime.Now).ToString("yyyy-MM-dd");
-        if (!_perApp.TryGetValue(app, out var days)) { days = new(); _perApp[app] = days; }
-        AddDay(days, DateOnly.FromDateTime(DateTime.Now), downDelta, upDelta);
-        if (++_writesSinceSave >= 30) Save();
+        lock (_sync)
+        {
+            var key = DateOnly.FromDateTime(DateTime.Now).ToString("yyyy-MM-dd");
+            if (!_perApp.TryGetValue(app, out var days)) { days = new(); _perApp[app] = days; }
+            AddDay(days, DateOnly.FromDateTime(DateTime.Now), downDelta, upDelta);
+            if (++_writesSinceSave >= 30) Save();
+        }
     }
 
     private static void AddDay(Dictionary<string, DayUsage> map, DateOnly date, long down, long up)
@@ -73,15 +85,18 @@ public sealed class HistoryStore
     {
         // 0 = keep forever
         if (retentionDays <= 0) return;
-        var cutoff = DateOnly.FromDateTime(DateTime.Now.AddDays(-retentionDays));
-        PruneMap(_data, cutoff);
-        foreach (var app in _perApp.Keys.ToList())
+        lock (_sync)
         {
-            var days = _perApp[app];
-            PruneMap(days, cutoff);
-            if (days.Count == 0) _perApp.Remove(app);
+            var cutoff = DateOnly.FromDateTime(DateTime.Now.AddDays(-retentionDays));
+            PruneMap(_data, cutoff);
+            foreach (var app in _perApp.Keys.ToList())
+            {
+                var days = _perApp[app];
+                PruneMap(days, cutoff);
+                if (days.Count == 0) _perApp.Remove(app);
+            }
+            Save();
         }
-        Save();
     }
 
     private static void PruneMap(Dictionary<string, DayUsage> map, DateOnly cutoff)
@@ -92,37 +107,47 @@ public sealed class HistoryStore
 
     public IReadOnlyList<(DateOnly Date, long Down, long Up)> Recent(int days)
     {
-        var list = new List<(DateOnly, long, long)>();
-        for (int i = days - 1; i >= 0; i--)
+        lock (_sync)
         {
-            var d = DateOnly.FromDateTime(DateTime.Now.AddDays(-i));
-            var u = _data.TryGetValue(d.ToString("yyyy-MM-dd"), out var v) ? v : new DayUsage();
-            list.Add((d, u.DownloadBytes, u.UploadBytes));
+            var list = new List<(DateOnly, long, long)>();
+            for (int i = days - 1; i >= 0; i--)
+            {
+                var d = DateOnly.FromDateTime(DateTime.Now.AddDays(-i));
+                var u = _data.TryGetValue(d.ToString("yyyy-MM-dd"), out var v) ? v : new DayUsage();
+                list.Add((d, u.DownloadBytes, u.UploadBytes));
+            }
+            return list;
         }
-        return list;
     }
 
     public IReadOnlyList<(string App, long Down, long Up)> TopApps(DateOnly date)
     {
         var key = date.ToString("yyyy-MM-dd");
-        var list = new List<(string, long, long)>();
-        foreach (var kv in _perApp)
+        lock (_sync)
         {
-            if (kv.Value.TryGetValue(key, out var u))
-                list.Add((kv.Key, u.DownloadBytes, u.UploadBytes));
+            var list = new List<(string, long, long)>();
+            foreach (var kv in _perApp)
+            {
+                if (kv.Value.TryGetValue(key, out var u))
+                    list.Add((kv.Key, u.DownloadBytes, u.UploadBytes));
+            }
+            return list.OrderByDescending(x => x.Item2 + x.Item3).ToList();
         }
-        return list.OrderByDescending(x => x.Item2 + x.Item3).ToList();
     }
 
     public void Save()
     {
-        _writesSinceSave = 0;
-        try
+        // Callers may or may not hold the lock; Monitor is reentrant so this is safe either way.
+        lock (_sync)
         {
-            Directory.CreateDirectory(Dir);
-            var payload = new HistoryFile { Days = _data, Apps = _perApp };
-            System.IO.File.WriteAllText(FilePath, JsonSerializer.Serialize(payload, JsonOpts));
+            _writesSinceSave = 0;
+            try
+            {
+                Directory.CreateDirectory(Dir);
+                var payload = new HistoryFile { Days = _data, Apps = _perApp };
+                System.IO.File.WriteAllText(FilePath, JsonSerializer.Serialize(payload, JsonOpts));
+            }
+            catch { }
         }
-        catch { }
     }
 }

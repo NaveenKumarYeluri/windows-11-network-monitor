@@ -16,8 +16,9 @@ public sealed partial class MainWindow : Window
     private readonly AppSettings _settings;
     private readonly NetworkAdapterService _adapters;
     private readonly HistoryStore _historyStore = new();
+    private readonly SettingsService _settingsStore = new();
     private readonly PerAppTracker _perAppTracker = new();
-    private readonly SpeedHistory _history = new();
+    private readonly SpeedHistory _history;
     private int _pollTick;
     private readonly Dictionary<string, double> _perAppAccumDown = new();
     private readonly Dictionary<string, double> _perAppAccumUp = new();
@@ -36,14 +37,13 @@ public sealed partial class MainWindow : Window
     private SettingsWindow? _settingsWin;
     private bool _exiting;
 
-    public MainWindow() : this(new AppSettings(), new NetworkAdapterService(new AppSettings()))
-    {
-    }
-
     public MainWindow(AppSettings settings, NetworkAdapterService adapters)
     {
         _settings = settings;
         _adapters = adapters;
+        // Keep the graph a true "last minute" window regardless of the poll
+        // interval: 60 s / interval samples, clamped to a sane range.
+        _history = new SpeedHistory(Math.Clamp(60000 / Math.Max(1, _settings.PollIntervalMs), 30, 240));
         _historyStore.Load();
         _historyStore.Prune(_settings.HistoryRetentionDays);
         InitializeComponent();
@@ -57,8 +57,11 @@ public sealed partial class MainWindow : Window
         _ = LatencyLoopAsync();
     }
 
-    public void InitTray(IntPtr hwnd)
+    public void InitTray()
     {
+        // Use our own window's handle — GetForegroundWindow() can race and return
+        // some other application's window right after activation.
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _tray = new TrayIconService(hwnd);
         if (_settings.ShowTrayIcon) _tray.Show();
         _tray.Clicked += () => DispatcherQueue.TryEnqueue(() => ShowDetail());
@@ -70,12 +73,15 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void OnSpeedChanged(IReadOnlyList<NetworkAdapterInfo> all, NetworkAdapterInfo? active, double down, double up)
+    private void OnSpeedChanged(IReadOnlyList<NetworkAdapterInfo> all, NetworkAdapterInfo? active, double down, double up, double elapsedSecs)
     {
-        _settings.SessionDownloadBytes += (long)(down * _settings.PollIntervalMs / 1000);
-        _settings.SessionUploadBytes += (long)(up * _settings.PollIntervalMs / 1000);
-        var downDelta = (long)(down * _settings.PollIntervalMs / 1000);
-        var upDelta = (long)(up * _settings.PollIntervalMs / 1000);
+        // Deltas use the REAL elapsed seconds since the previous snapshot, so
+        // totals stay accurate when ticks lag (adapter enumeration, per-app
+        // snapshotting, sleep/wake).
+        var downDelta = (long)(down * elapsedSecs);
+        var upDelta = (long)(up * elapsedSecs);
+        _settings.SessionDownloadBytes += downDelta;
+        _settings.SessionUploadBytes += upDelta;
         _historyStore.AddDelta(downDelta, upDelta);
         _settings.DailyDownloadBytes += downDelta;
         _settings.DailyUploadBytes += upDelta;
@@ -219,7 +225,9 @@ public sealed partial class MainWindow : Window
         string[] lines;
         if (apps.Count == 0)
         {
-            lines = new[] { "No live connections detected (idle?)" };
+            lines = _settings.TrackPerApp
+                ? new[] { "No live connections detected (idle?)" }
+                : new[] { "Per-app tracking is OFF — enable it in Settings." };
         }
         else
         {
@@ -271,7 +279,7 @@ public sealed partial class MainWindow : Window
         UpLine.Points.Clear();
         for (int i = 0; i < samples.Count; i++)
         {
-            var x = width * i / Math.Max(1, _history.Samples.Count - 1);
+            var x = width * i / Math.Max(1, samples.Count - 1);
             DownLine.Points.Add(new Point(x, height - (samples[i].DownloadBps / max) * (height - 8) - 4));
             UpLine.Points.Add(new Point(x, height - (samples[i].UploadBps / max) * (height - 8) - 4));
         }
@@ -279,9 +287,18 @@ public sealed partial class MainWindow : Window
 
     private async Task LatencyLoopAsync()
     {
-        _latencyMs = await WifiService.PingAsync();
-        while (await _latencyTimer.WaitForNextTickAsync())
+        try
+        {
             _latencyMs = await WifiService.PingAsync();
+            while (true)
+            {
+                _latencyMs = await WifiService.PingAsync();
+                await _latencyTimer.WaitForNextTickAsync();
+            }
+        }
+        catch (ObjectDisposedException) { } // timer disposed while waiting (window closed)
+        catch (OperationCanceledException) { }
+        catch { }
     }
 
     private void Nav_SelectionChanged(object sender, NavigationViewSelectionChangedEventArgs args)
@@ -377,8 +394,11 @@ public sealed partial class MainWindow : Window
 
     private void MainWindow_Closed(object sender, WindowEventArgs e)
     {
+        try { _historyStore.Save(); } catch { }
+        try { _settingsStore.Save(_settings); } catch { } // persists session/daily counters
         _tray?.Dispose();
         _hud?.Close();
         _latencyTimer.Dispose();
+        _adapters.Dispose();
     }
 }

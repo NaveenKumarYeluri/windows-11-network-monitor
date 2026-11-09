@@ -11,35 +11,42 @@ namespace Windows11NetworkMonitor.Services;
 /// </summary>
 public sealed class NetworkAdapterService : IDisposable
 {
-    private readonly PeriodicTimer _timer;
     private readonly CancellationTokenSource _cts = new();
     private readonly AppSettings _settings;
     private readonly Dictionary<string, (long Rx, long Tx, DateTimeOffset At)> _prev = new(StringComparer.OrdinalIgnoreCase);
 
-    public event Action<IReadOnlyList<NetworkAdapterInfo>, NetworkAdapterInfo?, double, double>? Changed;
+    // elapsedSecs = actual seconds since the previous snapshot. Deltas computed as
+    // bps * elapsedSecs stay accurate across timer lag, retries and sleep/wake.
+    public event Action<IReadOnlyList<NetworkAdapterInfo>, NetworkAdapterInfo?, double, double, double>? Changed;
 
-    public NetworkAdapterService(AppSettings settings, TimeSpan? interval = null)
+    public NetworkAdapterService(AppSettings settings)
     {
         _settings = settings;
-        _timer = new PeriodicTimer(interval ?? TimeSpan.FromMilliseconds(settings.PollIntervalMs));
     }
 
     public async Task RunAsync()
     {
-        await PollOnceAsync();
-        while (await _timer.WaitForNextTickAsync(_cts.Token))
+        PollOnce();
+        while (true)
         {
-            await PollOnceAsync();
+            // Read the interval every tick so changes in Settings apply live
+            // (only the in-memory value; no restart needed).
+            var interval = TimeSpan.FromMilliseconds(Math.Clamp(_settings.PollIntervalMs, 250, 5000));
+            try { await Task.Delay(interval, _cts.Token); }
+            catch (OperationCanceledException) { break; }
+            catch (ObjectDisposedException) { break; } // disposed while waiting
+            PollOnce();
         }
     }
 
-    public Task PollOnceAsync()
+    public void PollOnce()
     {
         var now = DateTimeOffset.Now;
         var adapters = GetAdapters();
         var active = SelectActive(adapters);
 
         double downBps = 0, upBps = 0;
+        double elapsedSecs = 0;
         var targets = string.Equals(_settings.AdapterMode, "Combined", StringComparison.OrdinalIgnoreCase)
             ? adapters.Where(a => a.IsUp && !a.IsLoopback).ToList()
             : active is null ? new List<NetworkAdapterInfo>() : new List<NetworkAdapterInfo> { active };
@@ -49,6 +56,7 @@ public sealed class NetworkAdapterService : IDisposable
             if (!_prev.TryGetValue(a.Id, out var p)) continue;
             var secs = (now - p.At).TotalSeconds;
             if (secs <= 0) continue;
+            if (secs > elapsedSecs) elapsedSecs = secs;
             var dRx = Math.Max(0, a.BytesReceived - p.Rx);
             var dTx = Math.Max(0, a.BytesSent - p.Tx);
             downBps += dRx / secs;
@@ -58,8 +66,7 @@ public sealed class NetworkAdapterService : IDisposable
         foreach (var a in adapters)
             _prev[a.Id] = (a.BytesReceived, a.BytesSent, now);
 
-        Changed?.Invoke(adapters, active, downBps, upBps);
-        return Task.CompletedTask;
+        Changed?.Invoke(adapters, active, downBps, upBps, elapsedSecs);
     }
 
     public IReadOnlyList<NetworkAdapterInfo> GetAdapters()
@@ -126,8 +133,8 @@ public sealed class NetworkAdapterService : IDisposable
 
     public void Dispose()
     {
+        // Cancel first; the RunAsync loop handles the cancellation and exits cleanly.
         _cts.Cancel();
-        _timer.Dispose();
         _cts.Dispose();
     }
 }
