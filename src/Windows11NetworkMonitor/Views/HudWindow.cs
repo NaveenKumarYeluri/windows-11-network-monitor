@@ -36,7 +36,7 @@ public sealed class HudWindow : Window
     private readonly TextBlock _speedText;
     private readonly DispatcherTimer _repositionTimer;
 
-    public HudWindow(Window parent, AppSettings settings)
+    public HudWindow(MainWindow parent, AppSettings settings)
     {
         _settings = settings;
         Title = "HUD";
@@ -46,7 +46,7 @@ public sealed class HudWindow : Window
             Padding = new Thickness(6, 2, 6, 2),
             ColumnSpacing = 8
         };
-        root.Tapped += (_, _) => parent.Activate();
+        root.Tapped += (_, _) => parent.ShowFromTray();
         _speedText = new TextBlock
         {
             Text = "↓ 0 B/s  ↑ 0 B/s",

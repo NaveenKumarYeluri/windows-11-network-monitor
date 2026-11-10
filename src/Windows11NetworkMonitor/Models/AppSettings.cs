@@ -44,15 +44,18 @@ public sealed partial class AppSettings : ObservableObject
 
     // Daily usage alert. 0 = disabled; the limit counts download + upload combined.
     [ObservableProperty]
-    private double dailyLimitGB = 0;
-
-    // Alert bookkeeping (persisted so restarts don't re-nag): highest threshold
+    private double dailyLimitGB = 0;    // Alert bookkeeping (persisted so restarts don't re-nag): highest threshold
     // announced (0 none, 1 = 90%, 2 = 100%) and the day it was announced for.
     [ObservableProperty]
     private int dailyAlertStage;
 
     [ObservableProperty]
     private DateOnly dailyAlertDate = DateOnly.FromDateTime(DateTime.Now);
+
+    // Close (X) keeps the app running in the tray (background monitoring);
+    // false = the X button really exits.
+    [ObservableProperty]
+    private bool closeToTray = true;
 
     // HUD placement (relative / absolute offsets in DIPs)
     [ObservableProperty]

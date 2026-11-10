@@ -56,6 +56,7 @@ public sealed partial class SettingsWindow : Window
         PollIntervalBox.Value = System.Math.Clamp(_settings.PollIntervalMs, 250, 5000);
         HistoryRetentionBox.Value = System.Math.Clamp(_settings.HistoryRetentionDays, 0, 365);
         TrackPerAppCheck.IsChecked = _settings.TrackPerApp;
+        CloseToTrayCheck.IsChecked = _settings.CloseToTray;
         ShowHudCheck.IsChecked = _settings.ShowTaskbarHud;
         ShowGraphCheck.IsChecked = _settings.ShowGraph;
         IncludeVirtualCheck.IsChecked = _settings.IncludeVirtualAdapters;
@@ -88,6 +89,7 @@ public sealed partial class SettingsWindow : Window
         _settings.PollIntervalMs = System.Math.Clamp(interval, 250, 5000);
         _settings.HistoryRetentionDays = System.Math.Clamp((int)Math.Round(HistoryRetentionBox.Value), 0, 365);
         _settings.TrackPerApp = TrackPerAppCheck.IsChecked == true;
+        _settings.CloseToTray = CloseToTrayCheck.IsChecked == true;
         _settings.ShowTaskbarHud = ShowHudCheck.IsChecked == true;
         _settings.ShowGraph = ShowGraphCheck.IsChecked == true;
         _settings.IncludeVirtualAdapters = IncludeVirtualCheck.IsChecked == true;

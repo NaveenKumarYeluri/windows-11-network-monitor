@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Windows.Foundation;
 using Windows.Graphics;
 using Windows11NetworkMonitor.Models;
@@ -14,6 +15,17 @@ namespace Windows11NetworkMonitor;
 
 public sealed partial class MainWindow : Window
 {
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    private const int SW_RESTORE = 9;
+
     private readonly AppSettings _settings;
     private readonly NetworkAdapterService _adapters;
     private readonly HistoryStore _historyStore = new();
@@ -42,6 +54,8 @@ public sealed partial class MainWindow : Window
     private HudWindow? _hud;
     private SettingsWindow? _settingsWin;
     private bool _exiting;
+    private bool _hiddenToTray;
+    private bool _hideHintShown;
 
     public MainWindow(AppSettings settings, NetworkAdapterService adapters)
     {
@@ -592,10 +606,28 @@ public sealed partial class MainWindow : Window
 
     private void GraphCanvas_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e) => ShowDetail();
 
-    private void ShowDetail()
+    /// <summary>
+    /// Brings the main window back from the tray (or restores a minimized one).
+    /// WinUI quirk: Window.Activate() alone does NOT reliably re-show a window
+    /// hidden via AppWindow.Hide() - it can stay invisible forever ("ghost"
+    /// app running in the tray). So: AppWindow.Show() first, then restore if
+    /// minimized, then activate, then force foreground (WinUI activation alone
+    /// is best-effort under foreground-lock rules).
+    /// </summary>
+    public void ShowFromTray()
     {
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        if (_hiddenToTray || !IsWindowVisible(hwnd))
+        {
+            _hiddenToTray = false;
+            AppWindow.Show();
+            ShowWindow(hwnd, SW_RESTORE); // no-op when not minimized
+        }
         Activate();
+        SetForegroundWindow(hwnd);
     }
+
+    private void ShowDetail() => ShowFromTray();
 
     public void ShowSettings()
     {
@@ -614,10 +646,28 @@ public sealed partial class MainWindow : Window
 
     private void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
-        if (!_exiting)
+        if (_exiting) return;
+        if (_settings.CloseToTray)
         {
+            // Background mode: keep monitoring, leave the tray icon (and HUD)
+            // alive, hide the taskbar button. Closed is NOT raised yet - state
+            // keeps being persisted by the periodic flush.
             args.Cancel = true;
             sender.Hide();
+            _hiddenToTray = true;
+            if (!_hideHintShown && _settings.ShowTrayIcon)
+            {
+                _hideHintShown = true; // once per session
+                _balloonAction = ShowFromTray;
+                _tray?.ShowBalloon("Still running",
+                    "Windows 11 Network Monitor keeps monitoring in the background. Click this notification (or the tray icon) to reopen, right-click the tray icon to exit.");
+            }
+        }
+        else
+        {
+            // User opted out of tray mode: let the close proceed for real;
+            // MainWindow_Closed then saves state and disposes everything.
+            _exiting = true;
         }
     }
 
