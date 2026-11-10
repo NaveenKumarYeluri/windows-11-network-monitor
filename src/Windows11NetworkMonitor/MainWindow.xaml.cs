@@ -52,6 +52,8 @@ public sealed partial class MainWindow : Window
         SetWindowIcon();
         ((FrameworkElement)Content).RequestedTheme = GetWantTheme();
         AppWindow.Resize(new SizeInt32(1180, 640));
+        // Repaint the 30-day bar chart when the dashboard reflows (window resize).
+        Chart30Canvas.SizeChanged += (_, _) => UpdateHistory30(force: true);
         AppWindow.Closing += AppWindow_Closing;
         _adapters.Changed += OnSpeedChanged;
         Closed += MainWindow_Closed;
@@ -256,6 +258,7 @@ public sealed partial class MainWindow : Window
             // 6/7 stay reachable and the page never snaps to day 1 on its own.
             UpdateAdapters(all);
             UpdateHistory();
+            UpdateHistory30();
             UpdateTopApps();
             UpdateApps();
             DrawGraph();
@@ -305,6 +308,95 @@ public sealed partial class MainWindow : Window
             $"{r.Date:ddd MMM dd}    {SpeedFormatter.FormatBytes(r.Down)} ↓    {SpeedFormatter.FormatBytes(r.Up)} ↑")
             .ToArray();
         RenderInto(HistoryPanel, ref _lastHistoryCsv, lines, saveOffset: true);
+    }
+
+    private string _chart30Csv = string.Empty;
+
+    /// <summary>
+    /// 30-day daily-totals bar chart (stacked: blue download, orange upload on
+    /// top). Repaints only when a day's totals change (string-compare like the
+    /// other updaters) or when the canvas reflows; hover shows exact totals.
+    /// </summary>
+    private void UpdateHistory30(bool force = false)
+    {
+        var rows = _historyStore.Recent(30);
+        var csv = string.Join(";", rows.Select(r => $"{r.Date:yyyyMMdd}|{r.Down}|{r.Up}"));
+        if (!force && csv == _chart30Csv) return;
+        var width = Chart30Canvas.ActualWidth;
+        if (double.IsNaN(width) || width < 40) return; // layout not ready yet; a later tick repaints
+        _chart30Csv = csv;
+
+        var canvas = Chart30Canvas;
+        canvas.Children.Clear();
+        var maxBytes = rows.Max(r => r.Down + r.Up);
+        var maxBytesSafe = maxBytes <= 0 ? 1 : maxBytes;
+
+        Chart30Max.Text = SpeedFormatter.FormatBytes(maxBytes);
+        Chart30Mid.Text = SpeedFormatter.FormatBytes(maxBytes / 2);
+        Chart30Min.Text = "0";
+
+        var height = canvas.Height;
+        var top = 4.0;
+        var barH = height - top - 2;
+        var yBase = top + barH;
+        var slot = width / rows.Count;
+        var barW = Math.Max(2.0, slot - 2);
+
+        var downBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
+        var upBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0xD8, 0x3B, 0x01));
+        var zeroBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(0x60, 0x88, 0x88, 0x88));
+
+        // Midline + baseline.
+        var axisBrush = (Brush)Application.Current.Resources["TextFillColorDisabledBrush"];
+        canvas.Children.Add(new Microsoft.UI.Xaml.Shapes.Line
+        {
+            X1 = 0, X2 = width,
+            Y1 = top + barH / 2, Y2 = top + barH / 2,
+            Stroke = axisBrush,
+            StrokeThickness = 1,
+            StrokeDashArray = new DoubleCollection { 4, 4 }
+        });
+        canvas.Children.Add(new Microsoft.UI.Xaml.Shapes.Line
+        {
+            X1 = 0, X2 = width, Y1 = yBase, Y2 = yBase,
+            Stroke = axisBrush,
+            StrokeThickness = 1
+        });
+
+        for (var i = 0; i < rows.Count; i++)
+        {
+            var (date, down, up) = rows[i];
+            var x = i * slot + (slot - barW) / 2;
+            var total = down + up;
+            var tooltip = total == 0
+                ? $"{date:ddd MMM dd}\nNo traffic recorded"
+                : down > 0
+                    ? $"{date:ddd MMM dd}\n{SpeedFormatter.FormatBytes(down)} down + {SpeedFormatter.FormatBytes(up)} up"
+                    : $"{date:ddd MMM dd}\n{SpeedFormatter.FormatBytes(up)} up";
+            if (total == 0)
+            {
+                var marker = new Microsoft.UI.Xaml.Shapes.Rectangle { Width = barW, Height = 1, Fill = zeroBrush };
+                Canvas.SetLeft(marker, x);
+                Canvas.SetTop(marker, yBase);
+                Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(marker, tooltip);
+                canvas.Children.Add(marker);
+            }
+            else
+            {
+                var hDown = barH * down / maxBytesSafe;
+                var hUp = barH * up / maxBytesSafe;
+                var rectDown = new Microsoft.UI.Xaml.Shapes.Rectangle { Width = barW, Height = Math.Max(1, hDown), Fill = downBrush };
+                Canvas.SetLeft(rectDown, x);
+                Canvas.SetTop(rectDown, yBase - hDown);
+                var rectUp = new Microsoft.UI.Xaml.Shapes.Rectangle { Width = barW, Height = Math.Max(1, hUp), Fill = upBrush };
+                Canvas.SetLeft(rectUp, x);
+                Canvas.SetTop(rectUp, yBase - hDown - hUp);
+                Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(rectDown, tooltip);
+                Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(rectUp, tooltip);
+                canvas.Children.Add(rectDown);
+                canvas.Children.Add(rectUp);
+            }
+        }
     }
 
     private void UpdateTopApps()

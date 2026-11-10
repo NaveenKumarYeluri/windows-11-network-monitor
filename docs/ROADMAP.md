@@ -36,6 +36,8 @@
 - [x] Daily usage alerts — Settings cap in GB (0 = off), tray balloon at 90% and
       100% of the limit (download + upload combined); alert stage persisted per
       day so restarts never re-warn the same crossing; balloon click → dashboard
+- [x] 30-day history chart — stacked daily bars (blue download, orange upload)
+      with bytes Y-axis + hover tooltips, repaint on totals change / reflow
 
 ## Next
 - [ ] Screenshots under `docs/screenshots/`
@@ -44,6 +46,7 @@
 - [ ] Native `GetIfTable2` path (64-bit counters, link speed)
 - [ ] MSIX package + signing for Store
 - [ ] Byte-accurate per-process traffic (WFP callout, admin)
-- [ ] 30-day history chart (currently 7-day list)
+- [ ] Installer (WiX / msix installer) + auto-update via Releases
+- [ ] Localization (en-US, hi-IN first)
 - [ ] Installer (WiX / msix installer) + auto-update via Releases
 - [ ] Localization (en-US, hi-IN first)
