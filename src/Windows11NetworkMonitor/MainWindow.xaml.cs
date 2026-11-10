@@ -75,7 +75,7 @@ public sealed partial class MainWindow : Window
         };
         _tray.MenuShowSettings += () => DispatcherQueue.TryEnqueue(() => ShowSettings());
         _tray.MenuCheckUpdates += () => DispatcherQueue.TryEnqueue(() => CheckUpdatesNow(manual: true));
-        _tray.BalloonClicked += () => DispatcherQueue.TryEnqueue(OpenReleasePage);
+        _tray.BalloonClicked += () => DispatcherQueue.TryEnqueue(() => _balloonAction?.Invoke());
         _tray.MenuExit += () => DispatcherQueue.TryEnqueue(Shutdown);
         if (_settings.ShowTaskbarHud)
         {
@@ -85,6 +85,7 @@ public sealed partial class MainWindow : Window
     }
 
     private string? _releaseUrl;
+    private Action? _balloonAction;
 
     /// <summary>
     /// Startup update check (GitHub Releases API). Runs 5 s after launch so
@@ -100,6 +101,7 @@ public sealed partial class MainWindow : Window
                 var info = await UpdateChecker.CheckAsync();
                 if (info is null) return;
                 _releaseUrl = info.Url;
+                _balloonAction = OpenReleasePage;
                 DispatcherQueue.TryEnqueue(() => _tray?.ShowBalloon(
                     $"New version {info.Tag} available",
                     $"Windows 11 Network Monitor {UpdateChecker.CurrentVersion().ToString(3)} is installed. Click this notification to view the new release."));
@@ -117,10 +119,12 @@ public sealed partial class MainWindow : Window
             if (info is not null)
             {
                 _releaseUrl = info.Url;
+                _balloonAction = OpenReleasePage;
                 _tray?.ShowBalloon($"New version {info.Tag} available", "Click this notification to open the release page on GitHub.");
             }
             else if (manual)
             {
+                _balloonAction = null;
                 _tray?.ShowBalloon("You're up to date", $"Windows 11 Network Monitor {UpdateChecker.CurrentVersion().ToString(3)} is the latest release.");
             }
         }
@@ -136,6 +140,40 @@ public sealed partial class MainWindow : Window
         try
         {
             Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Balloon warnings when daily usage (down + up combined) crosses 90% and
+    /// 100% of the configured limit. Stage + day persist in settings.json so a
+    /// restart never re-nags about the same crossing.
+    /// </summary>
+    private void CheckDailyAlert()
+    {
+        var limitGb = _settings.DailyLimitGB;
+        if (limitGb <= 0) return;
+        try
+        {
+            // New day (or limit changed in Settings): re-arm from zero.
+            if (_settings.DailyAlertDate != _settings.DailyDate)
+            {
+                _settings.DailyAlertDate = _settings.DailyDate;
+                _settings.DailyAlertStage = 0;
+            }
+
+            var usedGb = (_settings.DailyDownloadBytes + _settings.DailyUploadBytes) / 1073741824.0;
+            var target = usedGb >= limitGb ? 2 : usedGb >= 0.9 * limitGb ? 1 : 0;
+            if (target <= _settings.DailyAlertStage) return;
+
+            _settings.DailyAlertStage = target;
+            _settingsStore.Save(_settings);
+            if (target == 2)
+                _tray?.ShowBalloon("Daily usage limit reached",
+                    $"{usedGb:F1} GB of {limitGb:F0} GB used today (download + upload).");
+            else
+                _tray?.ShowBalloon($"Daily usage at 90% of your {limitGb:F0} GB limit",
+                    $"{usedGb:F1} GB used so far today (download + upload).");
         }
         catch { }
     }
@@ -157,6 +195,7 @@ public sealed partial class MainWindow : Window
         _settings.DailyDownloadBytes += downDelta;
         _settings.DailyUploadBytes += upDelta;
         _settings.ResetDailyIfNeeded();
+        if (!paused) CheckDailyAlert();
         _perAppTracker.TrackPerApp = _settings.TrackPerApp;
         ++_pollTick;
 

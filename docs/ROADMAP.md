@@ -33,6 +33,9 @@
 - [x] Check for updates — single unauthenticated GitHub Releases API call
       (startup + tray menu), tray balloon on newer tag, balloon click opens the
       release page; UpdateChecker compares tag vs assembly version
+- [x] Daily usage alerts — Settings cap in GB (0 = off), tray balloon at 90% and
+      100% of the limit (download + upload combined); alert stage persisted per
+      day so restarts never re-warn the same crossing; balloon click → dashboard
 
 ## Next
 - [ ] Screenshots under `docs/screenshots/`

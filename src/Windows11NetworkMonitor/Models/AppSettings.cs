@@ -42,6 +42,18 @@ public sealed partial class AppSettings : ObservableObject
     [ObservableProperty]
     private bool trackingPaused = false;
 
+    // Daily usage alert. 0 = disabled; the limit counts download + upload combined.
+    [ObservableProperty]
+    private double dailyLimitGB = 0;
+
+    // Alert bookkeeping (persisted so restarts don't re-nag): highest threshold
+    // announced (0 none, 1 = 90%, 2 = 100%) and the day it was announced for.
+    [ObservableProperty]
+    private int dailyAlertStage;
+
+    [ObservableProperty]
+    private DateOnly dailyAlertDate = DateOnly.FromDateTime(DateTime.Now);
+
     // HUD placement (relative / absolute offsets in DIPs)
     [ObservableProperty]
     private int hudOffsetX = 0;

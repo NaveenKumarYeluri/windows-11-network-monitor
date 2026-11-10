@@ -33,6 +33,7 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 - [x] **System tray icon** with speed text (updates ~1 Hz; Win11 needs `^` promotion to pin it). Left-click opens the dashboard, **right-click opens a native menu** (Open dashboard / ⏸ Pause tracking / Settings / Exit); the icon survives Explorer restarts
 - [x] **Pause tracking** — tray menu ⏸ stops accumulating session/daily/history/per-app counters without hiding the link state; live speed, graph and HUD keep updating (HUD shows `⏸`). Persists across restarts
 - [x] **Check for updates** — one quiet request to the GitHub Releases API on launch (5 s after startup, nothing sent but a User-Agent header, silent when up to date/offline); tray balloon with the new version tag when a release is out. **Check for updates** in the tray menu reports either way; clicking the balloon opens the release page
+- [x] **Daily usage alerts** — set a daily cap in Settings (`0` = off); tray balloon warns at 90% and again when the cap (download + upload combined) is crossed. Alert state persists per day, so restarts don't re-nag; clicking the alert balloon opens the dashboard
 - [x] **Taskbar HUD** — borderless, always-on-top `150×28`; **Bottom** (default) docks over the taskbar clear of the clock and `^` tray arrow (tray width measured, not hardcoded), **Top/Left/Right** dock to screen edges; DPI-scaled ±500 DIP offsets in Settings, applied live on Save
 - [x] **Single instance** — launching the exe again focuses the running window instead of double-counting usage
 - [x] **CSV export** — Settings → *Export history to CSV* writes every stored day (device + per-app, bytes) to `%LOCALAPPDATA%\Windows11NetworkMonitor\exports\` and opens the folder
@@ -78,7 +79,8 @@ CI builds are available as artifacts on every push (see Actions tab). Signed/pac
 3. **Settings** (menu, or the button in `NavigationView.Header`): adapter mode (applies immediately), poll interval (restart to apply), Theme (System/Light/Dark), history retention (0–365 days), HUD/graph toggles, *Track per-app usage*, virtual adapters, *Start with Windows*, CSV export.
 4. **Pause tracking** (tray menu ⏸): session/daily/history/per-app counters stop accumulating; live speed, graph and HUD keep updating (HUD shows `⏸`). The paused state is saved, so it survives restarts.
 5. **Updates**: the app checks GitHub Releases once on launch (a single unauthenticated ping, no telemetry) and shows a tray balloon when a newer version exists; *Check for updates* in the tray menu re-checks on demand and reports the result. Clicking the update balloon opens the release page.
-6. Data files: `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json` and `usage-history.json`. Delete that folder to reset. Daily/session counters and history are saved on every exit, so they survive restarts.
+6. **Daily usage alert**: Settings → *Daily usage alert (GB)* — set e.g. `4`; you get a tray balloon at 90% of the cap and again at the cap (download + upload combined). `0` disables it. Alert stage is saved per day, so it fires once per threshold no matter how often you restart.
+7. Data files: `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json` and `usage-history.json`. Delete that folder to reset. Daily/session counters and history are saved on every exit, so they survive restarts.
 
 ### Auto-detect logic
 

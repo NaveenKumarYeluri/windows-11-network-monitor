@@ -65,6 +65,7 @@ public sealed partial class SettingsWindow : Window
         HudDockCombo.SelectedIndex = dock switch { "Top" => 1, "Left" => 2, "Right" => 3, _ => 0 };
         HudOffsetXBox.Value = System.Math.Clamp(_settings.HudOffsetX, -500, 500);
         HudOffsetYBox.Value = System.Math.Clamp(_settings.HudOffsetY, -500, 500);
+        DailyLimitBox.Value = System.Math.Clamp(_settings.DailyLimitGB, 0, 9999);
 
         StatusText.Text = $"Saved to {SettingsService.SettingsFilePath}";
     }
@@ -91,6 +92,14 @@ public sealed partial class SettingsWindow : Window
         _settings.HudDock = HudDockCombo.SelectedIndex switch { 1 => "Top", 2 => "Left", 3 => "Right", _ => "Bottom" };
         _settings.HudOffsetX = System.Math.Clamp((int)System.Math.Round(HudOffsetXBox.Value), -500, 500);
         _settings.HudOffsetY = System.Math.Clamp((int)System.Math.Round(HudOffsetYBox.Value), -500, 500);
+
+        var newLimit = System.Math.Clamp(System.Math.Round(DailyLimitBox.Value, 2), 0, 9999);
+        if (newLimit != _settings.DailyLimitGB)
+        {
+            _settings.DailyLimitGB = newLimit;
+            // Raising/lowering the limit re-arms the alerts from the current usage.
+            _settings.DailyAlertStage = 0;
+        }
         _settings.ThemeMode = ThemeCombo.SelectedIndex switch { 1 => "Light", 2 => "Dark", _ => "System" };
         _settings.DarkMode = _settings.ThemeMode == "Dark";
 

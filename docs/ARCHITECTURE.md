@@ -20,7 +20,7 @@ This app uses the two pragmatic surrogates:
 | `UpdateChecker` | `Services/UpdateChecker.cs` | One GET to the GitHub Releases API (`releases/latest`), tag→`Version` compare vs assembly version; no auth, no telemetry (User-Agent only) |
 | `TaskbarHudPosition` | `Services/TaskbarHudPosition.cs` | Bottom = dock HUD over the taskbar, left of the measured tray width (`TrayNotifyWnd`: clock + `^` chevron, never covered); Top/Left/Right = screen edges; DIP offsets scaled by `GetDpiForWindow` |
 | `HudWindow` | `Views/HudWindow.cs` | Transparent `150×28` floating HUD, `DispatcherTimer` reposition |
-| `MainWindow` | `MainWindow.xaml(.cs)` | Dashboard, graph (Y-axis labels), adapters, statistics (7-day history + top apps), apps-now; `StackPanel` rows inside one outer `ScrollViewer` (no inner list to snap) |
+| `MainWindow` | `MainWindow.xaml(.cs)` | Dashboard, graph (Y-axis labels), adapters, statistics (7-day history + top apps), apps-now; `StackPanel` rows inside one outer `ScrollViewer` (no inner list to snap); update checks + daily usage alerts (90%/100% balloons, stage persisted per day) |
 | `SettingsWindow` | `Views/SettingsWindow.xaml(.cs)` | Fluent settings — adapter, poll interval, Theme System/Light/Dark, retention 0–365 d, toggles (HUD/graph/per-app/virtual/autostart) |
 | `SettingsService` | `Services/SettingsService.cs` | JSON persistence + `Run` key autostart (`%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json`) |
 | `HistoryStore` | `Services/HistoryStore.cs` | Per-day device totals + per-app totals (`usage-history.json`), retention pruning |
