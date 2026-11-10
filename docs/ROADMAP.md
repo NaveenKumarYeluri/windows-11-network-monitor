@@ -38,10 +38,12 @@
       day so restarts never re-warn the same crossing; balloon click → dashboard
 - [x] 30-day history chart — stacked daily bars (blue download, orange upload)
       with bytes Y-axis + hover tooltips, repaint on totals change / reflow
+- [x] WiFi SSID + signal % — wlanapi.dll WlanQueryInterface CURRENT_CONNECTION
+      (DOT11_SSID + wlanSignalQuality), refreshed on the latency cadence,
+      shown in the dashboard; hidden when not associated / wired-only
 
 ## Next
 - [ ] Screenshots under `docs/screenshots/`
-- [ ] Full WLAN SSID + signal % via `WlanQueryInterface` CURRENT_CONNECTION (surface in Dashboard)
 - [ ] LiveChartsCore graph (zoom, tooltips, fill)
 - [ ] Native `GetIfTable2` path (64-bit counters, link speed)
 - [ ] MSIX package + signing for Store

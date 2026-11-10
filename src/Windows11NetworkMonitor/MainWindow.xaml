@@ -58,6 +58,7 @@
                             <TextBlock Text="UPLOAD" FontWeight="SemiBold" Opacity="0.7" />
                             <TextBlock x:Name="UpText" Text="0.0 MB/s" FontSize="36" FontWeight="SemiBold" Foreground="#D83B01" />
                             <TextBlock x:Name="LatencyText" Text="Latency: -- ms" Opacity="0.7" />
+                            <TextBlock x:Name="WifiText" Text="" Opacity="0.7" Visibility="Collapsed" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                 </Grid>

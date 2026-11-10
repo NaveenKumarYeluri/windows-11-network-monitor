@@ -15,7 +15,7 @@ This app uses the two pragmatic surrogates:
 |---|---|---|
 | `NetworkAdapterService` | `Services/NetworkAdapterService.cs` | Poll `NetworkInterface.GetAllNetworkInterfaces()`, compute deltas, auto-select active adapter |
 | `SpeedHistory` | `Services/SpeedHistory.cs` | ~60 s ring buffer (capacity derived from poll interval) + peak/avg; `SpeedFormatter` (`B/s → GB/s`) |
-| `WifiService` | `Services/WifiService.cs` | ICMP ping latency only (SSID/signal is future work) |
+| `WifiService` | `Services/WifiService.cs` | ICMP ping latency + WiFi association (SSID, signal 0-100%) via `WlanQueryInterface` `CURRENT_CONNECTION` on the same 3 s cadence |
 | `TrayIconService` | `Services/TrayIconService.cs` | Win32 tray, custom-drawn text icon, WndProc subclass for clicks + native right-click popup menu (`CreatePopupMenu`/`TrackPopupMenu` at cursor with `SetForegroundWindow` re-activate) + native balloon toasts (`NIF_INFO`, click → `BalloonClicked` event), re-adds icon on Explorer restart (`TaskbarCreated`), reclaims GDI icons via `DestroyIcon` |
 | `UpdateChecker` | `Services/UpdateChecker.cs` | One GET to the GitHub Releases API (`releases/latest`), tag→`Version` compare vs assembly version; no auth, no telemetry (User-Agent only) |
 | `TaskbarHudPosition` | `Services/TaskbarHudPosition.cs` | Bottom = dock HUD over the taskbar, left of the measured tray width (`TrayNotifyWnd`: clock + `^` chevron, never covered); Top/Left/Right = screen edges; DIP offsets scaled by `GetDpiForWindow` |
@@ -52,7 +52,6 @@ Windows exposes no per-socket byte counters to user mode. `PerAppTracker` enumer
 
 ## Future
 
-- Full WLAN SSID + signal (`wlanapi.dll` `WlanQueryInterface` CURRENT_CONNECTION parsing — the early stub was removed)
 - LiveChartsCore graph (zoom/tooltips) — the current Canvas/Polyline is zero-dependency by design
 - MSIX + Store signing
 - Byte-accurate per-app attribution via WFP/ETW (admin)

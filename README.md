@@ -31,6 +31,7 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 - [x] **Per-app usage (estimated, toggleable)** — *Apps using network now* (live TCP + UDP owner processes, IPv4 + IPv6) + *Top app today* attributed by open-connection share
 - [x] **Usage history retention** — Settings slider `0–365 days` (90 = 3 months, 180 = 6 months, 0 = forever) prunes `%LOCALAPPDATA%\Windows11NetworkMonitor\usage-history.json`
 - [x] **30-day history chart** — stacked daily bars (blue = download, orange = upload on top) with a bytes Y-axis and hover tooltips showing each day's exact totals; repaints only when a day's totals change or the window reflows. The 7-day text list stays below it
+- [x] **WiFi status** — current **SSID · signal %** in the dashboard (via `wlanapi.dll` CURRENT_CONNECTION), refreshed with the same 3 s cadence as latency; hidden on wired-only setups
 - [x] **System tray icon** with speed text (updates ~1 Hz; Win11 needs `^` promotion to pin it). Left-click opens the dashboard, **right-click opens a native menu** (Open dashboard / ⏸ Pause tracking / Settings / Exit); the icon survives Explorer restarts
 - [x] **Pause tracking** — tray menu ⏸ stops accumulating session/daily/history/per-app counters without hiding the link state; live speed, graph and HUD keep updating (HUD shows `⏸`). Persists across restarts
 - [x] **Check for updates** — one quiet request to the GitHub Releases API on launch (5 s after startup, nothing sent but a User-Agent header, silent when up to date/offline); tray balloon with the new version tag when a release is out. **Check for updates** in the tray menu reports either way; clicking the balloon opens the release page
@@ -43,7 +44,7 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 - [x] **Icon** — `NetworkMonitor.ico` + PNG/SVG (see Icon section)
 - [x] Lightweight: polling every 250–5000 ms (default 1000 ms), no admin needed
 
-> **Limitations to know:** per-app bytes are an **estimate proportional to open-connection count** (Windows exposes no per-socket byte counters to user mode). Byte-accurate counts need a WFP callout driver (admin) — not bundled. Wi-Fi SSID/signal display is **not** implemented yet (was a stub in early builds).
+> **Limitations to know:** per-app bytes are an **estimate proportional to open-connection count** (Windows exposes no per-socket byte counters to user mode). Byte-accurate counts need a WFP callout driver (admin) — not bundled.
 
 ## Screenshots
 
@@ -130,7 +131,7 @@ For the full picture (data flow, auto-detect logic, per-app attribution math) se
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) — LiveCharts upgrade, full SSID/signal, MSIX, auto-update, localization.
+See [docs/ROADMAP.md](docs/ROADMAP.md) — LiveCharts upgrade, MSIX, auto-update, localization.
 
 ## Contributing
 
@@ -169,6 +170,6 @@ Suggested citation: *Naveen Kumar Yeluri (2026), Windows 11 Network Monitor, MIT
 - `CommunityToolkit.Mvvm 8.2.2` (`ObservableObject`) — MIT
 - `System.Drawing.Common 8.0.0` (tray icon drawing) — MIT
 
-**System APIs used (no code copied):** `System.Net.NetworkInformation`, Win32 `iphlpapi.dll` (`GetExtendedTcpTable`/`GetExtendedUdpTable` for per-process connection enumeration), `shell32.dll` (`Shell_NotifyIcon`), `user32.dll` (`SetWindowSubclass`/`DefSubclassProc` for tray message routing, `GetDpiForWindow`), `comctl32.dll`. The earlier `wlanapi.dll` SSID stub was removed (see Limitations).
+**System APIs used (no code copied):** `System.Net.NetworkInformation`, Win32 `iphlpapi.dll` (`GetExtendedTcpTable`/`GetExtendedUdpTable` for per-process connection enumeration), `shell32.dll` (`Shell_NotifyIcon`), `user32.dll` (`SetWindowSubclass`/`DefSubclassProc` for tray message routing, `GetDpiForWindow`), `wlanapi.dll` (`WlanQueryInterface` CURRENT_CONNECTION for SSID + signal %), `comctl32.dll`.
 
 Per-app byte counts are **estimates proportional to open-connection count** — the shipped build does not bundle a WFP driver. Windows byte-accurate attribution would require an admin ETW/WFP callout (future work).

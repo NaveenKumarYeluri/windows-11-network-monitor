@@ -31,6 +31,7 @@ public sealed partial class MainWindow : Window
     private string _lastAdapterCsv = string.Empty;
     private readonly PeriodicTimer _latencyTimer = new(TimeSpan.FromSeconds(3));
     private long _latencyMs = -1;
+    private WifiService.WifiConnection? _wifiConn;
     private IReadOnlyList<AppUsage> _latestApps = Array.Empty<AppUsage>();
 
     private TrayIconService? _tray;
@@ -250,6 +251,15 @@ public sealed partial class MainWindow : Window
             UpText.Text = SpeedFormatter.Format(up);
             AdapterText.Text = active is null ? "No active adapter" : $"{active.Name} ({(active.IsWiFi ? "WiFi" : active.IsEthernet ? "Ethernet" : "Other")})";
             LatencyText.Text = _latencyMs >= 0 ? $"Latency: {_latencyMs} ms" : "Latency: -- ms";
+            if (_wifiConn is { } wifi && !string.IsNullOrEmpty(wifi.Ssid))
+            {
+                WifiText.Text = $"WiFi: {wifi.Ssid} · {wifi.SignalQuality}%";
+                WifiText.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                WifiText.Visibility = Visibility.Collapsed;
+            }
             SessionText.Text = $"{SpeedFormatter.FormatBytes(_settings.SessionDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.SessionUploadBytes)}{(paused ? "  (paused)" : "")}";
             DailyText.Text = $"{SpeedFormatter.FormatBytes(_settings.DailyDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.DailyUploadBytes)}";
             PeakText.Text = $"{SpeedFormatter.Format(_history.PeakDownloadBps)} / {SpeedFormatter.Format(_history.PeakUploadBps)} / {SpeedFormatter.Format(_history.AvgDownloadBps)}";
@@ -495,6 +505,8 @@ public sealed partial class MainWindow : Window
             while (true)
             {
                 _latencyMs = await WifiService.PingAsync();
+                // WLAN query is a couple of native calls; refresh on the same 3 s cadence.
+                _wifiConn = WifiService.QueryConnection();
                 await _latencyTimer.WaitForNextTickAsync();
             }
         }
