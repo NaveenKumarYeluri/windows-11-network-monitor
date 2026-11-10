@@ -33,6 +33,8 @@ public sealed class TrayIconService : IDisposable
 
     private const uint WM_APP = 0x8000;
     public const uint WM_TRAYICON = WM_APP + 1;
+    /// <summary>Posted cross-process by a second launch to ask the running instance to restore its window.</summary>
+    public const uint WM_RESTORE = WM_APP + 2;
 
     private const uint WM_LBUTTONUP = 0x0202;
     private const uint WM_RBUTTONUP = 0x0205;
@@ -114,14 +116,37 @@ public sealed class TrayIconService : IDisposable
     [DllImport("user32.dll")]
     private static extern bool DestroyIcon(IntPtr hIcon);
 
-    private readonly IntPtr _hwnd;
+    private IntPtr _hwnd; // not readonly: WinUI can re-home the main HWND (see Rebind)
     private readonly uint _id = 1;
     private IntPtr _lastHicon; // GDI icon we own (created via GetHicon) - must be DestroyIcon'd
     private bool _added;
     private uint _taskbarCreatedMsg;
     public bool IsVisible => _added;
 
+    /// <summary>The window handle the tray icon + message subclass currently live on.</summary>
+    public IntPtr Hwnd => _hwnd;
+
+    /// <summary>
+    /// Rebinds the shell registration and the message subclass to a (new) window
+    /// handle. WinUI can re-home the main HWND (observed when the window hides to
+    /// tray on close): the icon registered under the old handle goes dead - no
+    /// callbacks, and the shell eventually drops it. Deletes any icon registered
+    /// under the old handle first (same uID under a new hWnd would otherwise
+    /// create a second icon), then re-adds under the new one.
+    /// </summary>
+    public void Rebind(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero || hwnd == _hwnd) return;
+        RemoveSilently(); // removes under the OLD _hwnd
+        _added = false;
+        _hwnd = hwnd;
+        SetWindowSubclass(hwnd, _subclassProc, 1, IntPtr.Zero);
+        Show();
+    }
+
     public event Action? Clicked;
+    /// <summary>Fired when a second launch asks the running instance to show its window.</summary>
+    public event Action? RestoreRequested;
 
     // Right-click popup menu actions (menu is drawn by this class; MainWindow only reacts).
     public event Action? MenuShowDashboard;
@@ -155,6 +180,14 @@ public sealed class TrayIconService : IDisposable
                 if (mouse == WM_LBUTTONUP) Clicked?.Invoke();
                 else if (mouse == WM_RBUTTONUP) ShowMenu();
                 else if (mouse == NIN_BALLOONUSERCLICK) BalloonClicked?.Invoke();
+                return IntPtr.Zero;
+            }
+            if (uMsg == WM_RESTORE)
+            {
+                // Sent by a second launch (FindWindow can't see WinUI windows,
+                // so the launcher enumerates and posts instead of calling
+                // ShowWindow directly) - restore through the app's own path.
+                RestoreRequested?.Invoke();
                 return IntPtr.Zero;
             }
             if (_taskbarCreatedMsg != 0 && uMsg == _taskbarCreatedMsg && _added)
@@ -238,15 +271,16 @@ public sealed class TrayIconService : IDisposable
             hIcon = SystemIcons.Application.Handle, // shared icon; not owned by us
             szTip = "Windows 11 Network Monitor"
         };
-        Shell_NotifyIcon(NIM_ADD, ref data);
-
         // Enable NOTIFYICON_VERSION_4 so callbacks are well-defined; harmless if unsupported.
         var sv = data;
         sv.uVersion = NOTIFYICON_VERSION_4;
         sv.uFlags = 0;
         Shell_NotifyIcon(NIM_SETVERSION, ref sv);
 
-        _added = true;
+        // Track success honestly: if the add failed (e.g. stale window handle)
+        // _added stays false so later self-healing keeps retrying instead of
+        // assuming a phantom registration.
+        _added = Shell_NotifyIcon(NIM_ADD, ref data);
     }
 
     private void RemoveSilently()
@@ -295,9 +329,19 @@ public sealed class TrayIconService : IDisposable
             hIcon = icon.Handle,
             szTip = $"↓ {SpeedFormatter.Format(downBps)}  ↑ {SpeedFormatter.Format(upBps)}"
         };
-        Shell_NotifyIcon(NIM_MODIFY, ref data);
+        var ok = Shell_NotifyIcon(NIM_MODIFY, ref data);
         DestroyIcon(_lastHicon); // Icon.FromHandle does NOT own the handle: only we can free it
         _lastHicon = icon.Handle;
+
+        // Self-healing: NIM_MODIFY fails when the shell no longer knows the icon
+        // (window handle went stale, taskbar churn, Explorer restart race). The
+        // old code ignored the return value and the icon silently disappeared
+        // forever - notably after close-to-tray hid the main window. Mark the
+        // registration dead, re-add, and re-apply this tick's icon/tip.
+        if (ok) return;
+        _added = false;
+        Show();
+        Shell_NotifyIcon(NIM_MODIFY, ref data);
     }
 
     private static (string value, string unit) SplitShort(double bps)

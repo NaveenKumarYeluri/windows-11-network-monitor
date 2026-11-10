@@ -87,8 +87,9 @@ public sealed partial class MainWindow : Window
         // some other application's window right after activation.
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _tray = new TrayIconService(hwnd);
-        if (_settings.ShowTrayIcon) _tray.Show();
+        _tray.Show(); // always: close-to-tray is unconditional and the tray menu is the only Exit
         _tray.Clicked += () => DispatcherQueue.TryEnqueue(() => ShowDetail());
+        _tray.RestoreRequested += () => DispatcherQueue.TryEnqueue(() => ShowFromTray());
         _tray.IsPaused = () => _settings.TrackingPaused;
         _tray.MenuShowDashboard += () => DispatcherQueue.TryEnqueue(() => ShowDetail());
         _tray.MenuTogglePause += () =>
@@ -306,8 +307,16 @@ public sealed partial class MainWindow : Window
             var wantTheme = GetWantTheme();
             if (((FrameworkElement)Content).RequestedTheme != wantTheme) ((FrameworkElement)Content).RequestedTheme = wantTheme;
             GraphSection.Visibility = _settings.ShowGraph ? Visibility.Visible : Visibility.Collapsed;
-            if (_settings.ShowTrayIcon) { if (_tray is not null && !_tray.IsVisible) _tray.Show(); }
-            else { _tray?.Hide(); }
+            if (_tray is not null)
+            {
+                // WinUI can re-home the main HWND (observed when the window hides
+                // to tray on close). The tray subclass + shell registration follow
+                // the OLD handle and the icon goes dead - rebind when the handle
+                // changed, then make sure the icon is (still) registered.
+                var cur = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                if (cur != IntPtr.Zero && cur != _tray.Hwnd) _tray.Rebind(cur);
+                if (!_tray.IsVisible) _tray.Show();
+            }
             if (_settings.ShowTaskbarHud)
             {
                 if (_hud is null) { _hud = new HudWindow(this, _settings); _hud.Activate(); }
@@ -655,7 +664,7 @@ public sealed partial class MainWindow : Window
         args.Cancel = true;
         sender.Hide();
         _hiddenToTray = true;
-        if (!_hideHintShown && _settings.ShowTrayIcon)
+        if (!_hideHintShown)
         {
             _hideHintShown = true; // once per session
             _balloonAction = ShowFromTray;

@@ -29,6 +29,22 @@
       on the top ComboBox scrolled the page; focus move removed + offset restored)
 
 ## Shipped
+### v1.2.2 (via GitHub Releases — folder zip)
+- [x] Tray icon root-cause fix for "icon gone after close" - the tray icon was
+      gated on a stale `ShowTrayIcon: false` in settings.json (left over from the
+      pre-v1.0.1 Settings checkbox that was later removed, leaving no way to
+      re-enable it). The icon is now ALWAYS on: it is the app's exit path and
+      restore anchor; the dead setting is removed
+- [x] Self-healing tray icon - `Shell_NotifyIcon(NIM_MODIFY)` failures now
+      re-register the icon instead of fading away silently; `NIM_ADD` success
+      is tracked honestly; the icon can rebind to a new HWND if WinUI re-homes
+      the main window (rebind deletes the stale registration first)
+- [x] Second-launch restore fixed - `FindWindow` cannot see WinUI 3 windows
+      (returns 0 even for an exact title match), so `ActivateExistingInstance`
+      silently did nothing. It now enumerates windows and posts `WM_RESTORE`,
+      which the running instance handles via `ShowFromTray`. Verified
+      programmatically: close → second launch → window visible again
+
 ### v1.2.1 (via GitHub Releases — folder zip)
 - [x] Close-to-tray made unconditional — the v1.2.0 Settings toggle made X exit
       when deselected (confusing: app + HUD closed). The toggle is removed;

@@ -11,9 +11,6 @@ public sealed partial class AppSettings : ObservableObject
     private int pollIntervalMs = 1000;
 
     [ObservableProperty]
-    private bool showTrayIcon = true;
-
-    [ObservableProperty]
     private bool showTaskbarHud = true;
 
     [ObservableProperty]

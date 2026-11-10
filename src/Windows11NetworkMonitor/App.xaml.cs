@@ -46,22 +46,33 @@ public partial class App : Application
 
     private static void ActivateExistingInstance()
     {
-        var hwnd = FindWindow(null, "Windows 11 Network Monitor");
-        if (hwnd == IntPtr.Zero) return;
-        ShowWindow(hwnd, SW_RESTORE);
-        SetForegroundWindow(hwnd);
+        // FindWindow CANNOT see WinUI 3 windows: it returns 0 even for an exact
+        // title match (verified empirically), so the old code silently did
+        // nothing. Enumerate instead and post WM_RESTORE; the running
+        // instance's tray subclass handles it via ShowFromTray, which copes
+        // with the window being hidden to tray.
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((h, l) =>
+        {
+            var sb = new System.Text.StringBuilder(256);
+            GetWindowText(h, sb, 256);
+            if (sb.ToString() == "Windows 11 Network Monitor") { found = h; return false; }
+            return true;
+        }, IntPtr.Zero);
+        if (found != IntPtr.Zero)
+            PostMessage(found, TrayIconService.WM_RESTORE, IntPtr.Zero, IntPtr.Zero);
     }
 
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
+    private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder text, int count);
 
     [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    private const int SW_RESTORE = 9;
+    private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
     public static DispatcherQueue? Dispatcher => _dispatcher;
     public static AppSettings? Settings => _settings;
