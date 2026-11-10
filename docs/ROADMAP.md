@@ -28,6 +28,16 @@
 - [x] Bug fix: Settings no longer scrolls to top after Save (programmatic focus
       on the top ComboBox scrolled the page; focus move removed + offset restored)
 
+### On main (post-release, next patch version)
+- [x] Screenshots shipped in README (`docs/screenshots/`, reviewed for PII - none)
+- [x] HUD focus-steal fix — the half-second topmost re-assertion in
+      `HudWindow.Reposition()` now passes `SWP_NOACTIVATE`; without it the call
+      could activate the HUD and steal focus from the active app (observed as
+      focus jumping while clicking "New" in Snipping Tool mid-snip)
+- [x] Periodic counter persistence — session/daily counters flushed ~once/minute
+      (cadence from poll interval) with thread-safe settings writes, so hard
+      kills lose < 1 min of counts instead of everything since launch
+
 ### v1.0.1 (first public release — folder zip via GitHub Releases)
 - [x] WinUI 3 scaffold, solution, GitHub Actions build (folder publish) + release packaging
 - [x] NetworkAdapterService auto-detect (WiFi/Ethernet/any, Auto + Combined, live interval changes)

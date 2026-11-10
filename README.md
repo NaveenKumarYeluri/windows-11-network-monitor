@@ -48,7 +48,20 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 
 ## Screenshots
 
-> The tray icon, HUD and dashboard are best understood running the build — screenshots are TODO (add them under `docs/screenshots/` when available).
+| | |
+|---|---|
+| ![Dashboard with live graph](docs/screenshots/Dashboard.PNG) | ![Statistics with 30-day history chart](docs/screenshots/Stats.PNG) |
+| **Dashboard** — live graph + adapters | **Statistics** — 30-day history chart + 7-day list |
+
+| | |
+|---|---|
+| ![Settings page 1](docs/screenshots/Settings_1.PNG) | ![Settings page 2](docs/screenshots/Settings_2.PNG) |
+| **Settings** — adapter, theme, HUD dock | **Settings** — alerts, toggles, CSV export |
+
+![Taskbar HUD](docs/screenshots/HUD.PNG)
+**Taskbar HUD** — `↓/↑` speeds docked over the taskbar, clear of the tray
+
+*(Screenshots reviewed — no personal data in frame.)*
 
 ## Requirements
 

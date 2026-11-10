@@ -29,7 +29,8 @@ public sealed class HudWindow : Window
     private const int WS_EX_TOPMOST = 0x00000008;
     private const int WS_EX_NOACTIVATE = 0x08000000;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
-    private const uint SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_SHOWWINDOW = 0x0040;
+    private const uint SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_SHOWWINDOW = 0x0040,
+                       SWP_NOACTIVATE = 0x0010;
 
     private readonly AppSettings _settings;
     private readonly TextBlock _speedText;
@@ -112,7 +113,11 @@ public sealed class HudWindow : Window
             {
                 var ex = GetWindowLong(hwnd, GWL_EXSTYLE);
                 SetWindowLong(hwnd, GWL_EXSTYLE, ex | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
-                SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+                // SWP_NOACTIVATE is essential: without it this periodic call could
+                // activate the HUD anyway and steal focus from whatever the user
+                // is doing (e.g. clicking "New" in Snipping Tool mid-snip).
+                SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
             }
             var hwndSelf = WinRT.Interop.WindowNative.GetWindowHandle(this);
             TaskbarHudPosition.Dock(AppWindow, hwndSelf, hwnd, _settings.HudDock, _settings.HudOffsetX, _settings.HudOffsetY);
