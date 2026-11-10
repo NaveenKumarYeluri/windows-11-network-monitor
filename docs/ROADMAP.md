@@ -29,11 +29,17 @@
       on the top ComboBox scrolled the page; focus move removed + offset restored)
 
 ## Shipped
+### v1.2.1 (via GitHub Releases — folder zip)
+- [x] Close-to-tray made unconditional — the v1.2.0 Settings toggle made X exit
+      when deselected (confusing: app + HUD closed). The toggle is removed;
+      closing the window ALWAYS hides to tray and keeps monitoring; exit is the
+      tray menu's Exit. Verified programmatically (WM_CLOSE → process alive,
+      window hidden)
+
 ### v1.2.0 (via GitHub Releases — folder zip)
 - [x] Run in tray / background — close (X) hides the window and keeps monitoring;
       one-time "Still running" balloon; reliable restore from tray click / HUD tap /
-      second launch (AppWindow.Show + ShowWindow restore + foreground); Settings
-      toggle *Close button keeps the app running in the tray* (default on, off = exit)
+      second launch (AppWindow.Show + ShowWindow restore + foreground)
 - [x] Periodic counter persistence — session/daily counters flushed ~once/minute
       (cadence from poll interval) with thread-safe settings writes, so hard
       kills lose < 1 min of counts instead of everything since launch

@@ -647,27 +647,20 @@ public sealed partial class MainWindow : Window
     private void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
         if (_exiting) return;
-        if (_settings.CloseToTray)
+
+        // Background mode, always: keep monitoring, leave the tray icon (and
+        // HUD) alive, hide the taskbar button. Closed is NOT raised yet - the
+        // periodic flush keeps persisting state while hidden. The only real
+        // exit is the tray menu's Exit (Shutdown()).
+        args.Cancel = true;
+        sender.Hide();
+        _hiddenToTray = true;
+        if (!_hideHintShown && _settings.ShowTrayIcon)
         {
-            // Background mode: keep monitoring, leave the tray icon (and HUD)
-            // alive, hide the taskbar button. Closed is NOT raised yet - state
-            // keeps being persisted by the periodic flush.
-            args.Cancel = true;
-            sender.Hide();
-            _hiddenToTray = true;
-            if (!_hideHintShown && _settings.ShowTrayIcon)
-            {
-                _hideHintShown = true; // once per session
-                _balloonAction = ShowFromTray;
-                _tray?.ShowBalloon("Still running",
-                    "Windows 11 Network Monitor keeps monitoring in the background. Click this notification (or the tray icon) to reopen, right-click the tray icon to exit.");
-            }
-        }
-        else
-        {
-            // User opted out of tray mode: let the close proceed for real;
-            // MainWindow_Closed then saves state and disposes everything.
-            _exiting = true;
+            _hideHintShown = true; // once per session
+            _balloonAction = ShowFromTray;
+            _tray?.ShowBalloon("Still running",
+                "Windows 11 Network Monitor keeps monitoring in the background. Click this notification (or the tray icon) to reopen, right-click the tray icon to exit.");
         }
     }
 

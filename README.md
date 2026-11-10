@@ -38,7 +38,7 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 - [x] **Daily usage alerts** — set a daily cap in Settings (`0` = off); tray balloon warns at 90% and again when the cap (download + upload combined) is crossed. Alert state persists per day, so restarts don't re-nag; clicking the alert balloon opens the dashboard
 - [x] **Taskbar HUD** — borderless, always-on-top `150×28`; **Bottom** (default) docks over the taskbar clear of the clock and `^` tray arrow (tray width measured, not hardcoded), **Top/Left/Right** dock to screen edges; DPI-scaled ±500 DIP offsets in Settings, applied live on Save
 - [x] **Single instance** — launching the exe again focuses the running window instead of double-counting usage
-- [x] **Runs in the tray (background)** — closing the window keeps the app monitoring in the background; a one-time balloon says so. Restore works from the tray icon, the HUD, or a second launch (WinUI's ghost-hidden-window quirk is handled: explicit show + restore + foreground). Prefer X = exit? Turn off *Close button keeps the app running in the tray* in Settings
+- [x] **Runs in the tray (background)** — closing the window **always** keeps the app monitoring in the background (one-time balloon the first time); restore works from the tray icon, the HUD, or a second launch (WinUI's ghost-hidden-window quirk is handled: explicit show + restore + foreground). To really exit: tray right-click → *Exit*
 - [x] **CSV export** — Settings → *Export history to CSV* writes every stored day (device + per-app, bytes) to `%LOCALAPPDATA%\Windows11NetworkMonitor\exports\` and opens the folder
 - [x] **Theme** — System / Light / Dark (Main + HUD follow it; Settings stays Light for readability)
 - [x] Settings window (JSON in `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json`), start-with-Windows (`Run` key), adapter / poll-interval controls
@@ -98,7 +98,7 @@ CI builds are also available as artifacts on every push (see Actions tab). Signe
 
 ## Usage
 
-1. Launch the app — tray icon + taskbar HUD appear. Launching it again focuses the running instance (single-instance). **Closing the window keeps the app running in the tray** (a one-time balloon confirms it); click the tray icon, tap the HUD, or launch the exe again to bring the dashboard back. To really exit: tray right-click → *Exit*, or turn off the close-to-tray toggle in Settings.
+1. Launch the app — tray icon + taskbar HUD appear. Launching it again focuses the running instance (single-instance). **Closing the window always keeps the app running in the tray** (a one-time balloon confirms it); click the tray icon, tap the HUD, or launch the exe again to bring the dashboard back. To really exit: tray right-click → *Exit*.
 2. Left-click the tray icon (or tap the HUD) to open the dashboard; **right-click the tray icon** for the menu: *Open dashboard*, *⏸ Pause/Resume tracking*, *Check for updates*, *Settings*, *Exit*.
 3. **Settings** (tray menu, or the button in `NavigationView.Header`): adapter mode (applies immediately), poll interval (restart to apply), Theme (System/Light/Dark), history retention (0–365 days), daily usage alert (GB), HUD dock side + offsets, HUD/graph toggles, *Track per-app usage*, virtual adapters, *Start with Windows*, CSV export.
 4. **Pause tracking** (tray menu ⏸): session/daily/history/per-app counters stop accumulating; live speed, graph and HUD keep updating (HUD shows `⏸`). The paused state is saved, so it survives restarts.

@@ -56,7 +56,6 @@
                 <TextBlock Text="Warn via a tray notification when daily usage (download + upload combined) reaches 90% of the limit, and again at the limit. 0 = off. Applies on the next tick — no restart." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
 
-            <CheckBox x:Name="CloseToTrayCheck" Content="Close button keeps the app running in the tray" />
             <CheckBox x:Name="ShowHudCheck" Content="Show taskbar HUD" />
             <CheckBox x:Name="ShowGraphCheck" Content="Show graph" />
             <CheckBox x:Name="TrackPerAppCheck" Content="Track per-app usage (estimated)" />

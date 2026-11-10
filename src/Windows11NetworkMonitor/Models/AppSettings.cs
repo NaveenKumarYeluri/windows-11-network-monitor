@@ -52,11 +52,6 @@ public sealed partial class AppSettings : ObservableObject
     [ObservableProperty]
     private DateOnly dailyAlertDate = DateOnly.FromDateTime(DateTime.Now);
 
-    // Close (X) keeps the app running in the tray (background monitoring);
-    // false = the X button really exits.
-    [ObservableProperty]
-    private bool closeToTray = true;
-
     // HUD placement (relative / absolute offsets in DIPs)
     [ObservableProperty]
     private int hudOffsetX = 0;
