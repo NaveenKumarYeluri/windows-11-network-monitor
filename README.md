@@ -58,13 +58,21 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 
 ## Install
 
-This app ships as an **unpackaged folder build** (single-file WinUI does not work reliably). Keep the whole folder together.
+The app is a **portable folder build — there is no installer and no admin needed**. The folder *is* the app: all files must stay together, but it runs from anywhere.
 
-### Option A — Download a Release (recommended)
-1. Go to [Releases](../../releases/latest) and download `windows-11-network-monitor-v*.**.*-win-x64.zip` from the latest release
-2. Unzip to e.g. `%LOCALAPPDATA%\Programs\Windows11NetworkMonitor\` (no admin needed) or `C:\Program Files\Windows11NetworkMonitor\`
-3. Run `Windows11NetworkMonitor.exe` from that folder (SmartScreen: **More info → Run anyway**)
-4. Right-click the `.exe` → **Send to → Desktop (create shortcut)** and enable **Start with Windows** in Settings. Pin the tray icon via **Settings → Personalization → Taskbar → Other system tray icons** (Win11 hides it under `^` by default).
+### Option A — Download and run (recommended)
+
+1. Go to [Releases](../../releases/latest) and download `windows-11-network-monitor-<version>-win-x64.zip` from the newest release (e.g. `...-v1.1.0-win-x64.zip`).
+2. Extract the **entire folder** (not just the exe) to a permanent location — this folder is effectively the install:
+   - e.g. `C:\Tools\Windows11NetworkMonitor` (create it first), or
+   - `%LOCALAPPDATA%\Programs\Windows11NetworkMonitor` (invisible to other users, also needs no admin).
+   - Pick a folder that won't move or be cleaned up later (not inside a synced/temp folder).
+3. In that folder, double-click **`Windows11NetworkMonitor.exe`**.
+4. Windows SmartScreen will warn on first run because the app is unsigned (a code-signing certificate is future work): click **More info → Run anyway**. This only happens once.
+5. The app starts: a tray icon (under `^` until you pin it) and a taskbar HUD appear, and counting begins. Settings/data are stored **separately** in `%LOCALAPPDATA%\Windows11NetworkMonitor\` — not inside the folder — so the folder can move later without losing history.
+6. **Start with Windows**: open Settings (tray right-click → *Settings*) → toggle **Start with Windows** → Save. Optionally create a Desktop shortcut: right-click the `.exe` → *Send to → Desktop (create shortcut)*. Pin the tray icon for one-click visibility via *Settings → Personalization → Taskbar → Other system tray icons* (Win11 hides new icons under `^` by default).
+7. **Updating to a newer version**: quit the app (tray right-click → *Exit*), download the new zip, and overwrite the folder's contents (keep the same folder). History and settings survive — they live in the data folder above. The app also checks for updates itself and shows a tray balloon when a release is out.
+8. **Uninstalling**: quit the app, delete the app folder, and delete `%LOCALAPPDATA%\Windows11NetworkMonitor\` to erase all history/settings.
 
 ### Option B — Build from source
 ```powershell
@@ -72,13 +80,13 @@ git clone https://github.com/NaveenKumarYeluri/windows-11-network-monitor.git
 cd windows-11-network-monitor
 dotnet build Windows11NetworkMonitor.sln -c Release
 ```
-CI builds are available as artifacts on every push (see Actions tab). Signed/packaged MSIX releases are future work (see Roadmap) — today the app ships as this zipped folder build.
+CI builds are also available as artifacts on every push (see Actions tab). Signed/packaged MSIX releases are future work (see Roadmap) — today the app ships as this zipped folder build.
 
 ## Usage
 
 1. Launch the app — tray icon + taskbar HUD appear. Launching it again focuses the running instance (single-instance).
-2. Left-click the tray icon (or tap the HUD) to open the dashboard; **right-click the tray icon** for the menu: *Open dashboard*, *⏸ Pause/Resume tracking*, *Settings*, *Exit*.
-3. **Settings** (menu, or the button in `NavigationView.Header`): adapter mode (applies immediately), poll interval (restart to apply), Theme (System/Light/Dark), history retention (0–365 days), HUD/graph toggles, *Track per-app usage*, virtual adapters, *Start with Windows*, CSV export.
+2. Left-click the tray icon (or tap the HUD) to open the dashboard; **right-click the tray icon** for the menu: *Open dashboard*, *⏸ Pause/Resume tracking*, *Check for updates*, *Settings*, *Exit*.
+3. **Settings** (tray menu, or the button in `NavigationView.Header`): adapter mode (applies immediately), poll interval (restart to apply), Theme (System/Light/Dark), history retention (0–365 days), daily usage alert (GB), HUD dock side + offsets, HUD/graph toggles, *Track per-app usage*, virtual adapters, *Start with Windows*, CSV export.
 4. **Pause tracking** (tray menu ⏸): session/daily/history/per-app counters stop accumulating; live speed, graph and HUD keep updating (HUD shows `⏸`). The paused state is saved, so it survives restarts.
 5. **Updates**: the app checks GitHub Releases once on launch (a single unauthenticated ping, no telemetry) and shows a tray balloon when a newer version exists; *Check for updates* in the tray menu re-checks on demand and reports the result. Clicking the update balloon opens the release page.
 6. **Daily usage alert**: Settings → *Daily usage alert (GB)* — set e.g. `4`; you get a tray balloon at 90% of the cap and again at the cap (download + upload combined). `0` disables it. Alert stage is saved per day, so it fires once per threshold no matter how often you restart.
@@ -113,7 +121,8 @@ NetworkAdapterService (NetworkInterface) → SpeedHistory (~60 s window, derived
     → HistoryStore (usage-history.json, device + per-app, retention 0–365 d)
     → PerAppTracker (GetExtendedTcpTable + GetExtendedUdpTable, share-by-connection estimate)
 SettingsService (JSON) ← SettingsWindow (WinUI Fluent)
-WifiService (Ping latency only)
+WifiService (Ping latency + WiFi SSID/signal via wlanapi)
+UpdateChecker (GitHub Releases API → tray balloon)
 ```
 
 For the full picture (data flow, auto-detect logic, per-app attribution math) see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -131,7 +140,7 @@ For the full picture (data flow, auto-detect logic, per-app attribution math) se
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) — LiveCharts upgrade, MSIX, auto-update, localization.
+See [docs/ROADMAP.md](docs/ROADMAP.md) — LiveCharts upgrade, MSIX/installer, auto-update download link, localization.
 
 ## Contributing
 
@@ -152,17 +161,15 @@ MIT — see [LICENSE](LICENSE). Copyright © 2026 Naveen Kumar Yeluri.
 
 ## Built with AI assistance
 
-This project was built with **AI (Claude Spark / OpenCode via Crouton Alpha, Meta AI)** — the assistant generated the initial scaffold, WinUI XAML/C# implementation, CI workflows, and icon assets, then iterated with the human maintainer through testing (tray/HUD behaviour, scroll bugs, per-app attribution). Every AI suggestion was reviewed, tested and committed by the maintainer. No third-party code was copied verbatim; all dependencies are NuGet packages under their own licenses (below). Human-authored code, product decisions and release choices remain the maintainer's.
+This project was built with **AI assistance (Claude / OpenCode)** — the assistant generated scaffolds, WinUI XAML/C# implementation, CI workflows and icon assets, then iterated with the maintainer through testing (tray/HUD behavior, scroll bugs, per-app attribution). Every change was reviewed, tested and committed by the maintainer, who owns all product decisions and release choices. No third-party code was copied; dependencies are NuGet packages under their own licenses (below).
 
 Suggested citation: *Naveen Kumar Yeluri (2026), Windows 11 Network Monitor, MIT.*
 
 ## Acknowledgments
 
-**Original work:** All application code in `src/` (MainWindow, Settings, HUD, tray, adapter polling, history, per-app estimator) was written for this project — see git history. No code was copied from existing monitors.
+**Original work:** all application code in `src/` was written for this project — see git history. No code was copied from existing monitors.
 
-**Inspiration / concepts (no code reused):**
-- TrafficMonitor, GlassWire, XMeters — for feature inspiration only.
-- Windows 11 taskbar HUD approach follows the documented `SHAppBarMessage` + transparent topmost window pattern and Microsoft's WinUI 3 / Windows App SDK guidance (custom taskbar applets are not supported on Win11).
+**Inspiration (concepts only, no code reused):** TrafficMonitor, GlassWire, XMeters.
 
 **Dependencies (NuGet, used as binaries — not copied into source):**
 - `.NET 8` (runtime/SDK) — MIT

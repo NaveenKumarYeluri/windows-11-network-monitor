@@ -1,6 +1,33 @@
 # Roadmap
 
 ## Shipped
+### v1.1.0 (via GitHub Releases — folder zip)
+- [x] Export history to CSV (Settings → writes device + per-app daily totals to
+      `%LOCALAPPDATA%\...\exports\*.csv`, UTF-8 BOM, opens the folder in Explorer)
+- [x] HUD dock UI (Settings: Bottom/Top/Left/Right side + ±500 DIP offsets, applied
+      live on Save). Bottom auto-reserves the measured TrayNotifyWnd width so the
+      clock and ^ overflow chevron are never covered; Top/Left/Right dock to
+      screen edges (Top = top edge centered, Left/Right = mid-height screen sides)
+- [x] Tray right-click menu (native TrackPopupMenu): Open dashboard / ⏸ Pause
+      tracking / Check for updates / Settings / Exit, with a dynamic Pause ⇄ Resume
+      label
+- [x] Pause tracking — stops session/daily/history/per-app accumulation only;
+      live speed, graph, tray and HUD keep updating (HUD shows ⏸); state persisted
+      in settings.json
+- [x] Check for updates — single unauthenticated GitHub Releases API call
+      (startup + tray menu), tray balloon on newer tag, balloon click opens the
+      release page; UpdateChecker compares tag vs assembly version
+- [x] Daily usage alerts — Settings cap in GB (0 = off), tray balloon at 90% and
+      100% of the limit (download + upload combined); alert stage persisted per
+      day so restarts never re-warn the same crossing; balloon click → dashboard
+- [x] 30-day history chart — stacked daily bars (blue download, orange upload)
+      with bytes Y-axis + hover tooltips, repaint on totals change / reflow
+- [x] WiFi SSID + signal % — wlanapi.dll WlanQueryInterface CURRENT_CONNECTION
+      (DOT11_SSID + wlanSignalQuality), refreshed on the latency cadence,
+      shown in the dashboard; hidden when not associated / wired-only
+- [x] Bug fix: Settings no longer scrolls to top after Save (programmatic focus
+      on the top ComboBox scrolled the page; focus move removed + offset restored)
+
 ### v1.0.1 (first public release — folder zip via GitHub Releases)
 - [x] WinUI 3 scaffold, solution, GitHub Actions build (folder publish) + release packaging
 - [x] NetworkAdapterService auto-detect (WiFi/Ethernet/any, Auto + Combined, live interval changes)
@@ -17,30 +44,6 @@
 
 ### v1.0.0 (internal build)
 - [x] Initial feature freeze (see git history)
-
-### Unreleased
-- [x] Export history to CSV (Settings → writes device + per-app daily totals to
-      `%LOCALAPPDATA%\...\exports\*.csv`, UTF-8 BOM, opens the folder in Explorer)
-- [x] HUD dock UI (Settings: Bottom/Top/Left/Right side + ±500 DIP offsets, applied
-      live on Save). Bottom auto-reserves the measured TrayNotifyWnd width so the
-      clock and ^ overflow chevron are never covered; Top/Left/Right dock to
-      screen edges (Top = top edge centered, Left/Right = mid-height screen sides)
-- [x] Tray right-click menu (native TrackPopupMenu): Open dashboard / ⏸ Pause
-      tracking / Settings / Exit, with a dynamic Pause ⇄ Resume label
-- [x] Pause tracking — stops session/daily/history/per-app accumulation only;
-      live speed, graph, tray and HUD keep updating (HUD shows ⏸); state persisted
-      in settings.json
-- [x] Check for updates — single unauthenticated GitHub Releases API call
-      (startup + tray menu), tray balloon on newer tag, balloon click opens the
-      release page; UpdateChecker compares tag vs assembly version
-- [x] Daily usage alerts — Settings cap in GB (0 = off), tray balloon at 90% and
-      100% of the limit (download + upload combined); alert stage persisted per
-      day so restarts never re-warn the same crossing; balloon click → dashboard
-- [x] 30-day history chart — stacked daily bars (blue download, orange upload)
-      with bytes Y-axis + hover tooltips, repaint on totals change / reflow
-- [x] WiFi SSID + signal % — wlanapi.dll WlanQueryInterface CURRENT_CONNECTION
-      (DOT11_SSID + wlanSignalQuality), refreshed on the latency cadence,
-      shown in the dashboard; hidden when not associated / wired-only
 
 ## Next
 - [ ] Screenshots under `docs/screenshots/`

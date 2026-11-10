@@ -20,9 +20,9 @@
     <Product>Windows 11 Network Monitor</Product>
     <Description>Live network speed monitor for Windows 11 — WiFi, Ethernet and any connection, with taskbar HUD, per-app history and 60-second graph.</Description>
     <Copyright>© 2026 Naveen Kumar Yeluri</Copyright>
-    <Version>1.0.1.0</Version>
-    <AssemblyVersion>1.0.1.0</AssemblyVersion>
-    <FileVersion>1.0.1.0</FileVersion>
+    <Version>1.1.0.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250310001" />

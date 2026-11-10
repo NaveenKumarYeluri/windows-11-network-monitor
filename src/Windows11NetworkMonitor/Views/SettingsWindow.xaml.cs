@@ -72,6 +72,10 @@ public sealed partial class SettingsWindow : Window
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
+        // Preserve the scroll position: Save re-writes many control values, and any
+        // resulting focus/layout change can otherwise scroll the page.
+        var savedOffset = PageScroll.VerticalOffset;
+
         var selected = AdapterModeCombo.Text?.Trim();
         if (string.IsNullOrWhiteSpace(selected) && AdapterModeCombo.SelectedItem is string s)
             selected = s.Trim();
@@ -109,7 +113,10 @@ public sealed partial class SettingsWindow : Window
         _history.Prune(_settings.HistoryRetentionDays);
         // Keep Settings dialog Light — MainWindow picks up ThemeMode on its next tick
         StatusText.Text = "Saved. Adapter mode applies immediately; poll interval takes effect after restart.";
-        AdapterModeCombo.Focus(FocusState.Programmatic);
+        // Do NOT move programmatic focus here: focusing AdapterModeCombo (top of the
+        // page) makes the ScrollViewer scroll the focused element into view, which
+        // yanked the page back to the top after every Save.
+        PageScroll.ChangeView(null, savedOffset, null, disableAnimation: true);
     }
 
     private void ExportCsvButton_Click(object sender, RoutedEventArgs e)
