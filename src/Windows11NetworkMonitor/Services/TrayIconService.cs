@@ -25,8 +25,11 @@ public sealed class TrayIconService : IDisposable
     private const uint NIF_ICON = 0x1;
     private const uint NIF_MESSAGE = 0x4;
     private const uint NIF_TIP = 0x8;
+    private const uint NIF_INFO = 0x10;
+    private const uint NIIF_INFO = 0x00000001; // info-style balloon (i icon)
     private const uint NIM_SETVERSION = 4;
     private const uint NOTIFYICON_VERSION_4 = 4;
+    private const uint NIN_BALLOONUSERCLICK = 0x0405; // user clicked the balloon body
 
     private const uint WM_APP = 0x8000;
     public const uint WM_TRAYICON = WM_APP + 1;
@@ -100,8 +103,9 @@ public sealed class TrayIconService : IDisposable
 
     private const uint ID_DASHBOARD = 1;
     private const uint ID_TOGGLE_PAUSE = 2;
-    private const uint ID_SETTINGS = 3;
-    private const uint ID_EXIT = 4;
+    private const uint ID_CHECK_UPDATES = 3;
+    private const uint ID_SETTINGS = 4;
+    private const uint ID_EXIT = 5;
 
     // Must be kept referenced in a field: the marshaled function pointer inside
     // the delegate would otherwise be collected while shell messages still come in.
@@ -122,8 +126,11 @@ public sealed class TrayIconService : IDisposable
     // Right-click popup menu actions (menu is drawn by this class; MainWindow only reacts).
     public event Action? MenuShowDashboard;
     public event Action? MenuTogglePause;
+    public event Action? MenuCheckUpdates;
     public event Action? MenuShowSettings;
     public event Action? MenuExit;
+    /// <summary>Fired when the user clicks a balloon notification body.</summary>
+    public event Action? BalloonClicked;
 
     /// <summary>Current paused state, used for the dynamic "Pause/Resume" menu label.</summary>
     public Func<bool>? IsPaused;
@@ -147,6 +154,7 @@ public sealed class TrayIconService : IDisposable
                 var mouse = (uint)(lParam.ToInt64() & 0xFFFF);
                 if (mouse == WM_LBUTTONUP) Clicked?.Invoke();
                 else if (mouse == WM_RBUTTONUP) ShowMenu();
+                else if (mouse == NIN_BALLOONUSERCLICK) BalloonClicked?.Invoke();
                 return IntPtr.Zero;
             }
             if (_taskbarCreatedMsg != 0 && uMsg == _taskbarCreatedMsg && _added)
@@ -176,6 +184,7 @@ public sealed class TrayIconService : IDisposable
         {
             AppendMenu(menu, MF_STRING, ID_DASHBOARD, "Open dashboard");
             AppendMenu(menu, MF_STRING, ID_TOGGLE_PAUSE, IsPaused is not null && IsPaused() ? "▶ Resume tracking" : "⏸ Pause tracking");
+            AppendMenu(menu, MF_STRING, ID_CHECK_UPDATES, "Check for updates");
             AppendMenu(menu, MF_SEPARATOR, 0u, string.Empty);
             AppendMenu(menu, MF_STRING, ID_SETTINGS, "Settings");
             AppendMenu(menu, MF_SEPARATOR, 0u, string.Empty);
@@ -189,6 +198,7 @@ public sealed class TrayIconService : IDisposable
             {
                 case ID_DASHBOARD: MenuShowDashboard?.Invoke(); break;
                 case ID_TOGGLE_PAUSE: MenuTogglePause?.Invoke(); break;
+                case ID_CHECK_UPDATES: MenuCheckUpdates?.Invoke(); break;
                 case ID_SETTINGS: MenuShowSettings?.Invoke(); break;
                 case ID_EXIT: MenuExit?.Invoke(); break;
             }
@@ -248,6 +258,26 @@ public sealed class TrayIconService : IDisposable
             uID = _id,
         };
         Shell_NotifyIcon(NIM_DELETE, ref data);
+    }
+
+    /// <summary>
+    /// Native tray balloon toast. Works whether or not the icon is promoted
+    /// out of the ^ overflow (balloons render regardless of visibility).
+    /// </summary>
+    public void ShowBalloon(string title, string message)
+    {
+        if (!_added) Show();
+        var data = new NOTIFYICONDATA
+        {
+            cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
+            hWnd = _hwnd,
+            uID = _id,
+            uFlags = NIF_INFO,
+            szInfo = message.Length > 255 ? message[..255] : message,
+            szInfoTitle = title.Length > 63 ? title[..63] : title,
+            dwInfoFlags = NIIF_INFO
+        };
+        Shell_NotifyIcon(NIM_MODIFY, ref data);
     }
 
     public void Update(double downBps, double upBps)

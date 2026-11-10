@@ -30,6 +30,9 @@
 - [x] Pause tracking — stops session/daily/history/per-app accumulation only;
       live speed, graph, tray and HUD keep updating (HUD shows ⏸); state persisted
       in settings.json
+- [x] Check for updates — single unauthenticated GitHub Releases API call
+      (startup + tray menu), tray balloon on newer tag, balloon click opens the
+      release page; UpdateChecker compares tag vs assembly version
 
 ## Next
 - [ ] Screenshots under `docs/screenshots/`

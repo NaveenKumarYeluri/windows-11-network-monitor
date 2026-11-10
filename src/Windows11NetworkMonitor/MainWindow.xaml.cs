@@ -3,6 +3,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using System.Diagnostics;
 using Windows.Foundation;
 using Windows.Graphics;
 using Windows11NetworkMonitor.Models;
@@ -73,12 +74,70 @@ public sealed partial class MainWindow : Window
             _settingsStore.Save(_settings);
         };
         _tray.MenuShowSettings += () => DispatcherQueue.TryEnqueue(() => ShowSettings());
+        _tray.MenuCheckUpdates += () => DispatcherQueue.TryEnqueue(() => CheckUpdatesNow(manual: true));
+        _tray.BalloonClicked += () => DispatcherQueue.TryEnqueue(OpenReleasePage);
         _tray.MenuExit += () => DispatcherQueue.TryEnqueue(Shutdown);
         if (_settings.ShowTaskbarHud)
         {
             _hud = new HudWindow(this, _settings);
             _hud.Activate();
         }
+    }
+
+    private string? _releaseUrl;
+
+    /// <summary>
+    /// Startup update check (GitHub Releases API). Runs 5 s after launch so
+    /// startup isn't gated on network I/O; silent when up to date or offline.
+    /// </summary>
+    public void RunUpdateChecks()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                var info = await UpdateChecker.CheckAsync();
+                if (info is null) return;
+                _releaseUrl = info.Url;
+                DispatcherQueue.TryEnqueue(() => _tray?.ShowBalloon(
+                    $"New version {info.Tag} available",
+                    $"Windows 11 Network Monitor {UpdateChecker.CurrentVersion().ToString(3)} is installed. Click this notification to view the new release."));
+            }
+            catch { /* offline or rate-limited: stay silent at startup */ }
+        });
+    }
+
+    /// <summary>Manual "Check for updates" (tray menu): always reports a result via balloon.</summary>
+    private async void CheckUpdatesNow(bool manual)
+    {
+        try
+        {
+            var info = await UpdateChecker.CheckAsync();
+            if (info is not null)
+            {
+                _releaseUrl = info.Url;
+                _tray?.ShowBalloon($"New version {info.Tag} available", "Click this notification to open the release page on GitHub.");
+            }
+            else if (manual)
+            {
+                _tray?.ShowBalloon("You're up to date", $"Windows 11 Network Monitor {UpdateChecker.CurrentVersion().ToString(3)} is the latest release.");
+            }
+        }
+        catch (Exception ex)
+        {
+            if (manual) _tray?.ShowBalloon("Update check failed", ex.Message);
+        }
+    }
+
+    private void OpenReleasePage()
+    {
+        var url = _releaseUrl ?? UpdateChecker.ReleasesUrl;
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+        }
+        catch { }
     }
 
     private void OnSpeedChanged(IReadOnlyList<NetworkAdapterInfo> all, NetworkAdapterInfo? active, double down, double up, double elapsedSecs)

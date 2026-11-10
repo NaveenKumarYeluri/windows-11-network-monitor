@@ -39,6 +39,7 @@ public partial class App : Application
         _mainWindow = new MainWindow(_settings, _adapterService);
         _mainWindow.Activate();
         _mainWindow.InitTray();
+        _mainWindow.RunUpdateChecks();
 
         _ = _adapterService.RunAsync();
     }
