@@ -32,6 +32,10 @@ public sealed partial class MainWindow : Window
     private readonly PeriodicTimer _latencyTimer = new(TimeSpan.FromSeconds(3));
     private long _latencyMs = -1;
     private WifiService.WifiConnection? _wifiConn;
+    // Persists counters roughly once a minute (tick count derived from poll
+    // interval) so a hard kill loses at most ~1 min of session data instead of
+    // everything since launch.
+    private readonly int _saveEveryTicks;
     private IReadOnlyList<AppUsage> _latestApps = Array.Empty<AppUsage>();
 
     private TrayIconService? _tray;
@@ -46,6 +50,8 @@ public sealed partial class MainWindow : Window
         // Keep the graph a true "last minute" window regardless of the poll
         // interval: 60 s / interval samples, clamped to a sane range.
         _history = new SpeedHistory(Math.Clamp(60000 / Math.Max(1, _settings.PollIntervalMs), 30, 240));
+        // Save cadence: 60 s worth of poll ticks, clamped to a sane range.
+        _saveEveryTicks = Math.Clamp(60000 / Math.Max(1, _settings.PollIntervalMs), 5, 600);
         _historyStore.Load();
         _historyStore.Prune(_settings.HistoryRetentionDays);
         InitializeComponent();
@@ -201,6 +207,15 @@ public sealed partial class MainWindow : Window
         if (!paused) CheckDailyAlert();
         _perAppTracker.TrackPerApp = _settings.TrackPerApp;
         ++_pollTick;
+
+        // Periodic persistence: roughly once a minute (poll ticks), flush the
+        // session/daily counters and history buffer to disk. On a hard kill the
+        // data lives on from the last flush instead of vanishing since launch.
+        if (_pollTick % _saveEveryTicks == 0)
+        {
+            try { _settingsStore.Save(_settings); } catch { }
+            try { _historyStore.Save(); } catch { }
+        }
 
         // Snapshot once; reused for both attribution and the "Apps using network now" UI below.
         IReadOnlyList<AppUsage> latestApps = Array.Empty<AppUsage>();

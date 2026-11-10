@@ -22,7 +22,7 @@ This app uses the two pragmatic surrogates:
 | `HudWindow` | `Views/HudWindow.cs` | Transparent `150×28` floating HUD, `DispatcherTimer` reposition |
 | `MainWindow` | `MainWindow.xaml(.cs)` | Dashboard, graph (Y-axis labels), adapters, statistics (30-day stacked bar chart + 7-day history + top apps), apps-now; `StackPanel` rows inside one outer `ScrollViewer` (no inner list to snap); update checks + daily usage alerts (90%/100% balloons, stage persisted per day) |
 | `SettingsWindow` | `Views/SettingsWindow.xaml(.cs)` | Fluent settings — adapter, poll interval, Theme System/Light/Dark, retention 0–365 d, toggles (HUD/graph/per-app/virtual/autostart) |
-| `SettingsService` | `Services/SettingsService.cs` | JSON persistence + `Run` key autostart (`%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json`) |
+| `SettingsService` | `Services/SettingsService.cs` | JSON persistence + `Run` key autostart (`%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json`); thread-safe writes (UI + poll threads both save). MainWindow also flushes counters ~once/minute so hard kills lose < 1 min of counts |
 | `HistoryStore` | `Services/HistoryStore.cs` | Per-day device totals + per-app totals (`usage-history.json`), retention pruning |
 | `PerAppTracker` | `Services/PerAppTracker.cs` | `GetExtendedTcpTable` + `GetExtendedUdpTable` (IPv4+IPv6, owner-PID) → process list (10 s PID-name cache); bytes attributed by connection share (fractional remainder) |
 

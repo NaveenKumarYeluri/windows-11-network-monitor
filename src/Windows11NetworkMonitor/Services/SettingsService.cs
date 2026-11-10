@@ -25,10 +25,17 @@ public sealed class SettingsService
         }
     }
 
+    // File writes from UI thread (toggles/alerts) and from the poll loop
+    // (periodic counter persistence) must not interleave.
+    private static readonly object SaveLock = new();
+
     public void Save(AppSettings settings)
     {
-        Directory.CreateDirectory(Dir);
-        System.IO.File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, JsonOpts));
+        lock (SaveLock)
+        {
+            Directory.CreateDirectory(Dir);
+            System.IO.File.WriteAllText(SettingsPath, JsonSerializer.Serialize(settings, JsonOpts));
+        }
     }
 
     public void ApplyStartWithWindows(bool enable)

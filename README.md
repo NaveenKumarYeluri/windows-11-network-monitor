@@ -90,7 +90,7 @@ CI builds are also available as artifacts on every push (see Actions tab). Signe
 4. **Pause tracking** (tray menu ⏸): session/daily/history/per-app counters stop accumulating; live speed, graph and HUD keep updating (HUD shows `⏸`). The paused state is saved, so it survives restarts.
 5. **Updates**: the app checks GitHub Releases once on launch (a single unauthenticated ping, no telemetry) and shows a tray balloon when a newer version exists; *Check for updates* in the tray menu re-checks on demand and reports the result. Clicking the update balloon opens the release page.
 6. **Daily usage alert**: Settings → *Daily usage alert (GB)* — set e.g. `4`; you get a tray balloon at 90% of the cap and again at the cap (download + upload combined). `0` disables it. Alert stage is saved per day, so it fires once per threshold no matter how often you restart.
-7. Data files: `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json` and `usage-history.json`. Delete that folder to reset. Daily/session counters and history are saved on every exit, so they survive restarts.
+7. Data files: `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json` and `usage-history.json`. Delete that folder to reset. Daily/session counters and history are saved on every exit **and flushed ~once a minute while running**, so even a hard kill (crash, reboot, force-close) loses at most about a minute of counts.
 
 ### Auto-detect logic
 
