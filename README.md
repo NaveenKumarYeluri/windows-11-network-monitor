@@ -30,7 +30,8 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 - [x] **Recent history (last 7 days)** — daily ↓/↑ totals in Statistics (scrolls with the page, no inner list)
 - [x] **Per-app usage (estimated, toggleable)** — *Apps using network now* (live TCP + UDP owner processes, IPv4 + IPv6) + *Top app today* attributed by open-connection share
 - [x] **Usage history retention** — Settings slider `0–365 days` (90 = 3 months, 180 = 6 months, 0 = forever) prunes `%LOCALAPPDATA%\Windows11NetworkMonitor\usage-history.json`
-- [x] **System tray icon** with speed text (updates ~1 Hz; Win11 needs `^` promotion to pin it). Left-click opens the dashboard, right-click opens Settings; the icon survives Explorer restarts
+- [x] **System tray icon** with speed text (updates ~1 Hz; Win11 needs `^` promotion to pin it). Left-click opens the dashboard, **right-click opens a native menu** (Open dashboard / ⏸ Pause tracking / Settings / Exit); the icon survives Explorer restarts
+- [x] **Pause tracking** — tray menu ⏸ stops accumulating session/daily/history/per-app counters without hiding the link state; live speed, graph and HUD keep updating (HUD shows `⏸`). Persists across restarts
 - [x] **Taskbar HUD** — borderless, always-on-top `150×28`; **Bottom** (default) docks over the taskbar clear of the clock and `^` tray arrow (tray width measured, not hardcoded), **Top/Left/Right** dock to screen edges; DPI-scaled ±500 DIP offsets in Settings, applied live on Save
 - [x] **Single instance** — launching the exe again focuses the running window instead of double-counting usage
 - [x] **CSV export** — Settings → *Export history to CSV* writes every stored day (device + per-app, bytes) to `%LOCALAPPDATA%\Windows11NetworkMonitor\exports\` and opens the folder
@@ -72,9 +73,10 @@ CI builds are available as artifacts on every push (see Actions tab). Signed/pac
 ## Usage
 
 1. Launch the app — tray icon + taskbar HUD appear. Launching it again focuses the running instance (single-instance).
-2. Left-click the tray icon (or tap the HUD) to open the dashboard; right-click the tray icon to open Settings.
-3. **Settings** (button in `NavigationView.Header` or tray right-click): adapter mode (applies immediately), poll interval (restart to apply), Theme (System/Light/Dark), history retention (0–365 days), HUD/graph toggles, *Track per-app usage*, virtual adapters, *Start with Windows*.
-4. Data files: `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json` and `usage-history.json`. Delete that folder to reset. Daily/session counters and history are saved on every exit, so they survive restarts.
+2. Left-click the tray icon (or tap the HUD) to open the dashboard; **right-click the tray icon** for the menu: *Open dashboard*, *⏸ Pause/Resume tracking*, *Settings*, *Exit*.
+3. **Settings** (menu, or the button in `NavigationView.Header`): adapter mode (applies immediately), poll interval (restart to apply), Theme (System/Light/Dark), history retention (0–365 days), HUD/graph toggles, *Track per-app usage*, virtual adapters, *Start with Windows*, CSV export.
+4. **Pause tracking** (tray menu ⏸): session/daily/history/per-app counters stop accumulating; live speed, graph and HUD keep updating (HUD shows `⏸`). The paused state is saved, so it survives restarts.
+5. Data files: `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json` and `usage-history.json`. Delete that folder to reset. Daily/session counters and history are saved on every exit, so they survive restarts.
 
 ### Auto-detect logic
 

@@ -11,9 +11,11 @@ namespace Windows11NetworkMonitor.Services;
 /// icon is still working even when it looks "not working" at first glance.
 /// Clicks are received via a comctl32 window subclass of the main window:
 /// the callback message is posted to the owning window's WndProc, which WinUI
-/// 3 exposes no other way. The subclass is also where we re-add the icon when
-/// the shell broadcasts TaskbarCreated (Explorer restart) - otherwise the
-/// icon would stay missing until the app is relaunched.
+/// 3 exposes no other way. Right-click shows a proper popup menu
+/// (Dashboard / Pause / Settings / Exit) anchored at the cursor. The subclass
+/// is also where we re-add the icon when the shell broadcasts TaskbarCreated
+/// (Explorer restart) - otherwise the icon would stay missing until the app
+/// is relaunched.
 /// </summary>
 public sealed class TrayIconService : IDisposable
 {
@@ -69,6 +71,38 @@ public sealed class TrayIconService : IDisposable
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern uint RegisterWindowMessage(string lpString);
 
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT { public int X; public int Y; }
+
+    // --- Popup menu (right-click) ---
+    [DllImport("user32.dll")]
+    private static extern IntPtr CreatePopupMenu();
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool AppendMenu(IntPtr hMenu, uint uFlags, uint uIDNewItem, string lpNewItem);
+
+    [DllImport("user32.dll")]
+    private static extern uint TrackPopupMenu(IntPtr hMenu, uint uFlags, int x, int y, int nReserved, IntPtr hWnd, IntPtr prcRect);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyMenu(IntPtr hMenu);
+
+    private const uint MF_STRING = 0x00000000;
+    private const uint MF_SEPARATOR = 0x00000800;
+    private const uint TPM_RIGHTBUTTON = 0x0002;
+    private const uint TPM_RETURNCMD = 0x0100;
+
+    private const uint ID_DASHBOARD = 1;
+    private const uint ID_TOGGLE_PAUSE = 2;
+    private const uint ID_SETTINGS = 3;
+    private const uint ID_EXIT = 4;
+
     // Must be kept referenced in a field: the marshaled function pointer inside
     // the delegate would otherwise be collected while shell messages still come in.
     private readonly SUBCLASSPROC _subclassProc;
@@ -84,7 +118,15 @@ public sealed class TrayIconService : IDisposable
     public bool IsVisible => _added;
 
     public event Action? Clicked;
-    public event Action? RightClick;
+
+    // Right-click popup menu actions (menu is drawn by this class; MainWindow only reacts).
+    public event Action? MenuShowDashboard;
+    public event Action? MenuTogglePause;
+    public event Action? MenuShowSettings;
+    public event Action? MenuExit;
+
+    /// <summary>Current paused state, used for the dynamic "Pause/Resume" menu label.</summary>
+    public Func<bool>? IsPaused;
 
     public TrayIconService(IntPtr hwnd)
     {
@@ -104,7 +146,7 @@ public sealed class TrayIconService : IDisposable
                 // and NOTIFYICON_VERSION_4 layouts share that position).
                 var mouse = (uint)(lParam.ToInt64() & 0xFFFF);
                 if (mouse == WM_LBUTTONUP) Clicked?.Invoke();
-                else if (mouse == WM_RBUTTONUP) RightClick?.Invoke();
+                else if (mouse == WM_RBUTTONUP) ShowMenu();
                 return IntPtr.Zero;
             }
             if (_taskbarCreatedMsg != 0 && uMsg == _taskbarCreatedMsg && _added)
@@ -118,6 +160,43 @@ public sealed class TrayIconService : IDisposable
         }
         catch { }
         return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    /// <summary>
+    /// Win32 popup menu at the cursor. Per tray convention the owning window
+    /// must be made foreground before TrackPopupMenu, otherwise the menu
+    /// doesn't dismiss when focus moves elsewhere. TPM_RETURNCMD returns the
+    /// picked command so we can dispatch it directly.
+    /// </summary>
+    private void ShowMenu()
+    {
+        var menu = CreatePopupMenu();
+        if (menu == IntPtr.Zero) return;
+        try
+        {
+            AppendMenu(menu, MF_STRING, ID_DASHBOARD, "Open dashboard");
+            AppendMenu(menu, MF_STRING, ID_TOGGLE_PAUSE, IsPaused is not null && IsPaused() ? "▶ Resume tracking" : "⏸ Pause tracking");
+            AppendMenu(menu, MF_SEPARATOR, 0u, string.Empty);
+            AppendMenu(menu, MF_STRING, ID_SETTINGS, "Settings");
+            AppendMenu(menu, MF_SEPARATOR, 0u, string.Empty);
+            AppendMenu(menu, MF_STRING, ID_EXIT, "Exit");
+
+            SetForegroundWindow(_hwnd);
+            GetCursorPos(out var pt);
+            var cmd = TrackPopupMenu(menu, TPM_RIGHTBUTTON | TPM_RETURNCMD, pt.X, pt.Y, 0, _hwnd, IntPtr.Zero);
+
+            switch (cmd)
+            {
+                case ID_DASHBOARD: MenuShowDashboard?.Invoke(); break;
+                case ID_TOGGLE_PAUSE: MenuTogglePause?.Invoke(); break;
+                case ID_SETTINGS: MenuShowSettings?.Invoke(); break;
+                case ID_EXIT: MenuExit?.Invoke(); break;
+            }
+        }
+        finally
+        {
+            DestroyMenu(menu);
+        }
     }
 
     public void Hide()

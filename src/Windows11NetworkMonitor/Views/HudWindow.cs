@@ -123,11 +123,14 @@ public sealed class HudWindow : Window
         catch { }
     }
 
-    public void Update(double downBps, double upBps)
+    public void Update(double downBps, double upBps, bool paused = false)
     {
         DispatcherQueue.TryEnqueue(() =>
         {
-            _speedText.Text = $"↓ {SpeedFormatter.Format(downBps)}  ↑ {SpeedFormatter.Format(upBps)}";
+            // "⏸" prefix makes the paused state obvious on the HUD; speeds keep
+            // updating so the link stays visible while tracking is paused.
+            var p = paused ? "⏸ " : string.Empty;
+            _speedText.Text = $"{p}↓ {SpeedFormatter.Format(downBps)}  ↑ {SpeedFormatter.Format(upBps)}";
         });
     }
 }

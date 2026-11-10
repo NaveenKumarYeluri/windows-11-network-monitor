@@ -25,6 +25,11 @@
       live on Save). Bottom auto-reserves the measured TrayNotifyWnd width so the
       clock and ^ overflow chevron are never covered; Top/Left/Right dock to
       screen edges (Top = top edge centered, Left/Right = mid-height screen sides)
+- [x] Tray right-click menu (native TrackPopupMenu): Open dashboard / ⏸ Pause
+      tracking / Settings / Exit, with a dynamic Pause ⇄ Resume label
+- [x] Pause tracking — stops session/daily/history/per-app accumulation only;
+      live speed, graph, tray and HUD keep updating (HUD shows ⏸); state persisted
+      in settings.json
 
 ## Next
 - [ ] Screenshots under `docs/screenshots/`

@@ -16,7 +16,7 @@ This app uses the two pragmatic surrogates:
 | `NetworkAdapterService` | `Services/NetworkAdapterService.cs` | Poll `NetworkInterface.GetAllNetworkInterfaces()`, compute deltas, auto-select active adapter |
 | `SpeedHistory` | `Services/SpeedHistory.cs` | ~60 s ring buffer (capacity derived from poll interval) + peak/avg; `SpeedFormatter` (`B/s → GB/s`) |
 | `WifiService` | `Services/WifiService.cs` | ICMP ping latency only (SSID/signal is future work) |
-| `TrayIconService` | `Services/TrayIconService.cs` | Win32 tray, custom-drawn text icon, WndProc subclass for clicks, re-adds icon on Explorer restart (`TaskbarCreated`), reclaims GDI icons via `DestroyIcon` |
+| `TrayIconService` | `Services/TrayIconService.cs` | Win32 tray, custom-drawn text icon, WndProc subclass for clicks + native right-click popup menu (`CreatePopupMenu`/`TrackPopupMenu` at cursor with `SetForegroundWindow` re-activate), re-adds icon on Explorer restart (`TaskbarCreated`), reclaims GDI icons via `DestroyIcon` |
 | `TaskbarHudPosition` | `Services/TaskbarHudPosition.cs` | Bottom = dock HUD over the taskbar, left of the measured tray width (`TrayNotifyWnd`: clock + `^` chevron, never covered); Top/Left/Right = screen edges; DIP offsets scaled by `GetDpiForWindow` |
 | `HudWindow` | `Views/HudWindow.cs` | Transparent `150×28` floating HUD, `DispatcherTimer` reposition |
 | `MainWindow` | `MainWindow.xaml(.cs)` | Dashboard, graph (Y-axis labels), adapters, statistics (7-day history + top apps), apps-now; `StackPanel` rows inside one outer `ScrollViewer` (no inner list to snap) |

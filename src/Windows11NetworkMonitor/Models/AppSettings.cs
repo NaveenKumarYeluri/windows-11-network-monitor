@@ -37,6 +37,11 @@ public sealed partial class AppSettings : ObservableObject
     [ObservableProperty]
     private bool trackPerApp = true;
 
+    // Pause semantics: stop accumulating session/daily/history/per-app counters only.
+    // Live speed display, graph, tray and HUD keep updating so the link stays visible.
+    [ObservableProperty]
+    private bool trackingPaused = false;
+
     // HUD placement (relative / absolute offsets in DIPs)
     [ObservableProperty]
     private int hudOffsetX = 0;

@@ -65,7 +65,15 @@ public sealed partial class MainWindow : Window
         _tray = new TrayIconService(hwnd);
         if (_settings.ShowTrayIcon) _tray.Show();
         _tray.Clicked += () => DispatcherQueue.TryEnqueue(() => ShowDetail());
-        _tray.RightClick += () => DispatcherQueue.TryEnqueue(() => ShowSettings());
+        _tray.IsPaused = () => _settings.TrackingPaused;
+        _tray.MenuShowDashboard += () => DispatcherQueue.TryEnqueue(() => ShowDetail());
+        _tray.MenuTogglePause += () =>
+        {
+            _settings.TrackingPaused = !_settings.TrackingPaused;
+            _settingsStore.Save(_settings);
+        };
+        _tray.MenuShowSettings += () => DispatcherQueue.TryEnqueue(() => ShowSettings());
+        _tray.MenuExit += () => DispatcherQueue.TryEnqueue(Shutdown);
         if (_settings.ShowTaskbarHud)
         {
             _hud = new HudWindow(this, _settings);
@@ -78,8 +86,12 @@ public sealed partial class MainWindow : Window
         // Deltas use the REAL elapsed seconds since the previous snapshot, so
         // totals stay accurate when ticks lag (adapter enumeration, per-app
         // snapshotting, sleep/wake).
-        var downDelta = (long)(down * elapsedSecs);
-        var upDelta = (long)(up * elapsedSecs);
+        // Pause: stop accumulating session/daily/history/per-app counters only.
+        // Live speed display, graph, tray and HUD keep updating so the link state
+        // stays visible while paused.
+        var paused = _settings.TrackingPaused;
+        var downDelta = paused ? 0 : (long)(down * elapsedSecs);
+        var upDelta = paused ? 0 : (long)(up * elapsedSecs);
         _settings.SessionDownloadBytes += downDelta;
         _settings.SessionUploadBytes += upDelta;
         _historyStore.AddDelta(downDelta, upDelta);
@@ -138,7 +150,7 @@ public sealed partial class MainWindow : Window
             UpText.Text = SpeedFormatter.Format(up);
             AdapterText.Text = active is null ? "No active adapter" : $"{active.Name} ({(active.IsWiFi ? "WiFi" : active.IsEthernet ? "Ethernet" : "Other")})";
             LatencyText.Text = _latencyMs >= 0 ? $"Latency: {_latencyMs} ms" : "Latency: -- ms";
-            SessionText.Text = $"{SpeedFormatter.FormatBytes(_settings.SessionDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.SessionUploadBytes)}";
+            SessionText.Text = $"{SpeedFormatter.FormatBytes(_settings.SessionDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.SessionUploadBytes)}{(paused ? "  (paused)" : "")}";
             DailyText.Text = $"{SpeedFormatter.FormatBytes(_settings.DailyDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.DailyUploadBytes)}";
             PeakText.Text = $"{SpeedFormatter.Format(_history.PeakDownloadBps)} / {SpeedFormatter.Format(_history.PeakUploadBps)} / {SpeedFormatter.Format(_history.AvgDownloadBps)}";
             // Render into StackPanels (no inner ListView scroll). Each updater only repaints
@@ -166,7 +178,7 @@ public sealed partial class MainWindow : Window
             }
 
             _tray?.Update(down, up);
-            _hud?.Update(down, up);
+            _hud?.Update(down, up, paused);
         });
     }
 
