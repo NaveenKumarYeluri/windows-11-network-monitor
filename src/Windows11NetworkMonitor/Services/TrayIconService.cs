@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using System.IO;
 
 namespace Windows11NetworkMonitor.Services;
 
@@ -61,8 +62,20 @@ public sealed class TrayIconService : IDisposable
         public Guid guidItem;
     }
 
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATA lpData);
+
+    /// <summary>Temporary diagnostics: append one line to tray-debug.log next to the settings.</summary>
+    internal static void Log(string line)
+    {
+        try
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Windows11NetworkMonitor");
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "tray-debug.log"), $"{DateTime.Now:HH:mm:ss.fff} {line}\r\n");
+        }
+        catch { }
+    }
 
     // --- WndProc subclassing (comctl32) so tray messages actually reach us ---
     private delegate IntPtr SUBCLASSPROC(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, uint uIdSubclass, IntPtr dwRefData);
@@ -118,7 +131,12 @@ public sealed class TrayIconService : IDisposable
 
     private IntPtr _hwnd; // not readonly: WinUI can re-home the main HWND (see Rebind)
     private readonly uint _id = 1;
-    private IntPtr _lastHicon; // GDI icon we own (created via GetHicon) - must be DestroyIcon'd
+    // Drawn speed-text icons. Keep the 3 most recent handles alive in a ring:
+    // Explorer references the PREVIOUS handle asynchronously, and destroying it
+    // in the same tick made the shell drop the icon (E_FAIL on the next modify).
+    private readonly IntPtr[] _iconRing = new IntPtr[3];
+    private int _iconRingIndex;
+    private Icon? _baseIcon;   // REAL icon for the initial NIM_ADD - SystemIcons.Application.Handle is invalid in .NET 8 and poisons the registration
     private bool _added;
     private uint _taskbarCreatedMsg;
     public bool IsVisible => _added;
@@ -136,6 +154,7 @@ public sealed class TrayIconService : IDisposable
     /// </summary>
     public void Rebind(IntPtr hwnd)
     {
+        Log($"Rebind: old=0x{_hwnd.ToInt64():X} new=0x{hwnd.ToInt64():X}");
         if (hwnd == IntPtr.Zero || hwnd == _hwnd) return;
         RemoveSilently(); // removes under the OLD _hwnd
         _added = false;
@@ -194,6 +213,7 @@ public sealed class TrayIconService : IDisposable
             {
                 // Explorer restarted: the shell dropped every tray icon.
                 // Re-register ours instead of silently disappearing.
+                Log("TaskbarCreated: re-adding icon");
                 _added = false;
                 Show();
                 return IntPtr.Zero;
@@ -268,19 +288,21 @@ public sealed class TrayIconService : IDisposable
             uID = _id,
             uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP,
             uCallbackMessage = WM_TRAYICON,
-            hIcon = SystemIcons.Application.Handle, // shared icon; not owned by us
+            hIcon = GetBaseIconHandle(),
             szTip = "Windows 11 Network Monitor"
         };
-        // Enable NOTIFYICON_VERSION_4 so callbacks are well-defined; harmless if unsupported.
-        var sv = data;
-        sv.uVersion = NOTIFYICON_VERSION_4;
-        sv.uFlags = 0;
-        Shell_NotifyIcon(NIM_SETVERSION, ref sv);
-
-        // Track success honestly: if the add failed (e.g. stale window handle)
-        // _added stays false so later self-healing keeps retrying instead of
-        // assuming a phantom registration.
+        // NIM_ADD first; NIM_SETVERSION is only valid AFTER a successful add
+        // (it poisons the registration otherwise and the shell drops the icon).
         _added = Shell_NotifyIcon(NIM_ADD, ref data);
+
+        if (_added)
+        {
+            // Enable NOTIFYICON_VERSION_4 so callbacks are well-defined; harmless if unsupported.
+            var sv = data;
+            sv.uVersion = NOTIFYICON_VERSION_4;
+            sv.uFlags = 0;
+            Shell_NotifyIcon(NIM_SETVERSION, ref sv);
+        }
     }
 
     private void RemoveSilently()
@@ -314,6 +336,33 @@ public sealed class TrayIconService : IDisposable
         Shell_NotifyIcon(NIM_MODIFY, ref data);
     }
 
+    /// <summary>
+    /// A REAL, valid HICON for the initial registration. SystemIcons.Application.Handle
+    /// turned out to be an invalid handle in .NET 8 (NIM_MODIFY with it fails E_FAIL),
+    /// which made the shell drop the freshly added icon - the "no tray icon" bug.
+    /// Prefer the app's own .ico; fall back to a drawn one. The Icon object is kept
+    /// alive in a field so the handle stays valid for the process lifetime.
+    /// </summary>
+    private IntPtr GetBaseIconHandle()
+    {
+        if (_baseIcon is null)
+        {
+            try
+            {
+                var path = Path.Combine(AppContext.BaseDirectory, "Assets", "NetworkMonitor.ico");
+                if (File.Exists(path)) _baseIcon = new Icon(path, 32, 32);
+            }
+            catch { }
+            if (_baseIcon is null)
+            {
+                var drawn = DrawIcon("--", "--");
+                _baseIcon = drawn; // keep alive; owned by us
+                return drawn.Handle;
+            }
+        }
+        return _baseIcon.Handle;
+    }
+
     public void Update(double downBps, double upBps)
     {
         if (!_added) return;
@@ -330,8 +379,12 @@ public sealed class TrayIconService : IDisposable
             szTip = $"↓ {SpeedFormatter.Format(downBps)}  ↑ {SpeedFormatter.Format(upBps)}"
         };
         var ok = Shell_NotifyIcon(NIM_MODIFY, ref data);
-        DestroyIcon(_lastHicon); // Icon.FromHandle does NOT own the handle: only we can free it
-        _lastHicon = icon.Handle;
+        // Retire the oldest handle only after two more ticks (see ring comment).
+        var retiring = _iconRing[(_iconRingIndex + 1) % _iconRing.Length];
+        _iconRing[(_iconRingIndex + 1) % _iconRing.Length] = icon.Handle;
+        _iconRingIndex = (_iconRingIndex + 1) % _iconRing.Length;
+        if (retiring != IntPtr.Zero) DestroyIcon(retiring);
+        if (!ok) Log($"Update: modify failed err={Marshal.GetLastWin32Error()} (icon will be re-registered)");
 
         // Self-healing: NIM_MODIFY fails when the shell no longer knows the icon
         // (window handle went stale, taskbar churn, Explorer restart race). The
@@ -341,7 +394,8 @@ public sealed class TrayIconService : IDisposable
         if (ok) return;
         _added = false;
         Show();
-        Shell_NotifyIcon(NIM_MODIFY, ref data);
+        var retry = Shell_NotifyIcon(NIM_MODIFY, ref data);
+        if (!retry) Log($"Update: retry modify failed err={Marshal.GetLastWin32Error()}");
     }
 
     private static (string value, string unit) SplitShort(double bps)
@@ -372,7 +426,8 @@ public sealed class TrayIconService : IDisposable
     public void Dispose()
     {
         Hide();
-        DestroyIcon(_lastHicon);
-        _lastHicon = IntPtr.Zero;
+        foreach (var h in _iconRing) if (h != IntPtr.Zero) DestroyIcon(h);
+        Array.Clear(_iconRing);
+        if (_baseIcon is not null) { _baseIcon.Dispose(); _baseIcon = null; }
     }
 }

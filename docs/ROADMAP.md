@@ -29,6 +29,22 @@
       on the top ComboBox scrolled the page; focus move removed + offset restored)
 
 ## Shipped
+### v1.2.3 (via GitHub Releases — folder zip)
+- [x] Fix v1.2.2 ordering bug - NIM_SETVERSION was sent BEFORE NIM_ADD (only valid
+      after a successful add; sent first it poisons the registration)
+- [x] Initial icon uses the app's real NetworkMonitor.ico - SystemIcons.Application.Handle
+      proved invalid in .NET 8 (NIM_MODIFY with it fails E_FAIL), which could poison
+      the freshly added icon
+- [x] Drawn speed-text icons kept in a 3-slot ring - Explorer references the previous
+      HICON asynchronously; destroying it in the same tick can break the next modify
+- [x] Failure-only diagnostics to %LOCALAPPDATA%\Windows11NetworkMonitor\tray-debug.log
+      (Show failures, Rebind, TaskbarCreated, modify failures - no steady-state writes)
+- [x] Investigation note: this test machine's shell currently does not render NEW
+      non-elevated tray icons at all (verified with an independent pure-Win32 repro -
+      Shell_NotifyIcon succeeds but no icon appears anywhere, and subsequent operations
+      fail E_FAIL). The app follows the documented API contract and self-heals every
+      tick; a machine reboot is the remaining remedy if the icon stays invisible
+
 ### v1.2.2 (via GitHub Releases — folder zip)
 - [x] Tray icon root-cause fix for "icon gone after close" - the tray icon was
       gated on a stale `ShowTrayIcon: false` in settings.json (left over from the
