@@ -31,7 +31,7 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 - [x] **Per-app usage (estimated, toggleable)** — *Apps using network now* (live TCP + UDP owner processes, IPv4 + IPv6) + *Top app today* attributed by open-connection share
 - [x] **Usage history retention** — Settings slider `0–365 days` (90 = 3 months, 180 = 6 months, 0 = forever) prunes `%LOCALAPPDATA%\Windows11NetworkMonitor\usage-history.json`
 - [x] **System tray icon** with speed text (updates ~1 Hz; Win11 needs `^` promotion to pin it). Left-click opens the dashboard, right-click opens Settings; the icon survives Explorer restarts
-- [x] **Taskbar HUD** — borderless, always-on-top `150×28`; dock side (Bottom/Top/Left/Right) + DPI-scaled offsets configurable in Settings (applies immediately on Save); docks to the taskbar on any monitor
+- [x] **Taskbar HUD** — borderless, always-on-top `150×28`; **Bottom** (default) docks over the taskbar clear of the clock and `^` tray arrow (tray width measured, not hardcoded), **Top/Left/Right** dock to screen edges; DPI-scaled ±500 DIP offsets in Settings, applied live on Save
 - [x] **Single instance** — launching the exe again focuses the running window instead of double-counting usage
 - [x] **CSV export** — Settings → *Export history to CSV* writes every stored day (device + per-app, bytes) to `%LOCALAPPDATA%\Windows11NetworkMonitor\exports\` and opens the folder
 - [x] **Theme** — System / Light / Dark (Main + HUD follow it; Settings stays Light for readability)

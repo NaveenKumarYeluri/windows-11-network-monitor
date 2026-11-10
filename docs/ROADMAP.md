@@ -22,7 +22,9 @@
 - [x] Export history to CSV (Settings → writes device + per-app daily totals to
       `%LOCALAPPDATA%\...\exports\*.csv`, UTF-8 BOM, opens the folder in Explorer)
 - [x] HUD dock UI (Settings: Bottom/Top/Left/Right side + ±500 DIP offsets, applied
-      live on Save; Left/Right docks center the HUD vertically over the taskbar)
+      live on Save). Bottom auto-reserves the measured TrayNotifyWnd width so the
+      clock and ^ overflow chevron are never covered; Top/Left/Right dock to
+      screen edges (Top = top edge centered, Left/Right = mid-height screen sides)
 
 ## Next
 - [ ] Screenshots under `docs/screenshots/`

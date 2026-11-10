@@ -38,6 +38,15 @@ public static class TaskbarHudPosition
     [DllImport("user32.dll")]
     private static extern int GetDpiForWindow(IntPtr hwnd);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindowEx(IntPtr hWndParent, IntPtr hWndChildAfter, string? lpszClass, string? lpszTitle);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
     [StructLayout(LayoutKind.Sequential)]
     private struct MONITORINFO
     {
@@ -84,38 +93,86 @@ public static class TaskbarHudPosition
     }
 
     /// <summary>
-    /// Docks a window over the taskbar. Settings offsets are treated as DIPs
-    /// (as documented) and scaled to physical pixels by the window's DPI,
-    /// so placement is consistent at 125%/150% scaling.
+    /// <summary>
+    /// Docks a window relative to the screen edges and the taskbar:
+    /// - Bottom: over the taskbar strip, just left of the tray (clock + ^ chevron),
+    ///   reserving the tray's actual measured width (DPI-independent).
+    /// - Top: top screen edge, centered; Left/Right: screen sides, vertically centered
+    ///   within the work area. (Previously every side was computed against the
+    ///   taskbar rect, which made Top and Left collapse to the same spot on a
+    ///   bottom taskbar.)
+    /// Settings offsets are DIPs, scaled to physical pixels by the window's DPI.
     /// </summary>
     public static void Dock(AppWindow window, IntPtr hwnd, IntPtr topmostHwnd, string dock, int offsetX, int offsetY)
     {
-        var (x, y, tw, th, _) = GetTaskbarBounds(hwnd, dock);
+        var mon = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
+        GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), ref mon);
+        var screen = mon.rcMonitor;
+        var work = mon.rcWork;
+
         var size = window.Size;
         var dpi = topmostHwnd != IntPtr.Zero ? GetDpiForWindow(topmostHwnd) : 96;
         var scale = dpi <= 0 ? 1.0 : dpi / 96.0;
         var ox = (int)Math.Round(offsetX * scale);
         var oy = (int)Math.Round(offsetY * scale);
+        var (tx, ty, tw, th, _) = GetTaskbarBounds(hwnd, dock);
         var pos = new Windows.Graphics.PointInt32();
 
         switch (dock)
         {
             case "Top":
-                pos = new Windows.Graphics.PointInt32(x + 8 + ox, y + Math.Max(0, (th - size.Height) / 2) + oy);
+                if (ty <= screen.Top + 2 && th > 0)
+                {
+                    // The taskbar itself is at the top edge here — use the
+                    // tray-adjacent strip placement instead of covering it.
+                    pos = new Windows.Graphics.PointInt32(
+                        tx + tw - size.Width - GetTrayReservePx(scale) + ox,
+                        ty + Math.Max(0, (th - size.Height) / 2) + oy);
+                }
+                else
+                {
+                    // Top edge of the screen, centered horizontally.
+                    pos = new Windows.Graphics.PointInt32(
+                        screen.Left + (screen.Right - screen.Left - size.Width) / 2 + ox,
+                        screen.Top + 8 + oy);
+                }
                 break;
             case "Left":
-            case "Right":
-                // Vertical-centered like Top/Bottom so the HUD floats over the
-                // taskbar strip (vertical taskbars are tall; bottom taskbars
-                // clamp the same as Top/Bottom via Max(0, ...)).
+                // Left screen edge, centered vertically in the work area.
                 pos = new Windows.Graphics.PointInt32(
-                    dock == "Left" ? x + 8 + ox : x + tw - size.Width - 8 + ox,
-                    y + Math.Max(0, (th - size.Height) / 2) + oy);
+                    screen.Left + 8 + ox,
+                    work.Top + (work.Bottom - work.Top - size.Height) / 2 + oy);
                 break;
-            default: // Bottom (Windows 11) - dock at right, just left of system tray (clear of ^ overflow)
-                pos = new Windows.Graphics.PointInt32(x + tw - size.Width - 190 + ox, y + Math.Max(0, (th - size.Height) / 2) + oy);
+            case "Right":
+                // Right screen edge, centered vertically in the work area.
+                pos = new Windows.Graphics.PointInt32(
+                    screen.Right - size.Width - 8 + ox,
+                    work.Top + (work.Bottom - work.Top - size.Height) / 2 + oy);
+                break;
+            default: // Bottom (Windows 11 default) - over the taskbar, clear of the tray
+                pos = new Windows.Graphics.PointInt32(
+                    tx + tw - size.Width - GetTrayReservePx(scale) + ox,
+                    ty + Math.Max(0, (th - size.Height) / 2) + oy);
                 break;
         }
         window.Move(pos);
+    }
+
+    /// <summary>
+    /// Pixels to reserve between the bottom-docked HUD and the tray's right
+    /// cluster (clock + ^ overflow chevron). Measured from the actual tray
+    /// window so it automatically follows DPI / tray contents; falls back to
+    /// a DPI-scaled 190 px when the shell windows can't be found.
+    /// </summary>
+    private static int GetTrayReservePx(double scale)
+    {
+        var tray = FindWindow("Shell_TrayWnd", null);
+        if (tray != IntPtr.Zero)
+        {
+            var notify = FindWindowEx(tray, IntPtr.Zero, "TrayNotifyWnd", null);
+            if (notify != IntPtr.Zero && GetWindowRect(notify, out var r) && r.Right > r.Left)
+                return (r.Right - r.Left) + 8;
+        }
+        return (int)Math.Round(190 * scale);
     }
 }

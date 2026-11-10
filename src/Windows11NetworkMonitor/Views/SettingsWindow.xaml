@@ -41,7 +41,7 @@
                     <NumberBox x:Name="HudOffsetXBox" Header="Horizontal offset (DIP, ±)" Minimum="-500" Maximum="500" SpinButtonPlacementMode="Inline" MinWidth="150" />
                     <NumberBox x:Name="HudOffsetYBox" Header="Vertical offset (DIP, ±)" Minimum="-500" Maximum="500" SpinButtonPlacementMode="Inline" MinWidth="150" />
                 </StackPanel>
-                <TextBlock Text="Side of the taskbar the HUD docks to, plus fine-tuning offsets (±500 DIP, DPI-scaled). Changes apply to the HUD the moment you Save — no restart." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+                <TextBlock Text="Bottom = over the taskbar, just left of the clock and the ^ tray arrow (their actual width is measured, so they are never covered). Top = top edge of the screen. Left / Right = mid-height of the screen sides. Offsets (±500 DIP, DPI-scaled) fine-tune the position and apply the moment you Save — no restart." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
 
             <StackPanel Spacing="6">
