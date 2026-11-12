@@ -50,6 +50,10 @@ public sealed partial class MainWindow : Window
     private readonly int _saveEveryTicks;
     private IReadOnlyList<AppUsage> _latestApps = Array.Empty<AppUsage>();
 
+    // --- Live graph revamp state ---
+    private int _graphRangeSeconds = 60; // 60 / 300 / 900 via the range selector
+    private IReadOnlyList<SpeedSample> _graphSamples = Array.Empty<SpeedSample>(); // samples currently drawn (hover maps onto these)
+
     private TrayIconService? _tray;
     private HudWindow? _hud;
     private SettingsWindow? _settingsWin;
@@ -63,7 +67,9 @@ public sealed partial class MainWindow : Window
         _adapters = adapters;
         // Keep the graph a true "last minute" window regardless of the poll
         // interval: 60 s / interval samples, clamped to a sane range.
-        _history = new SpeedHistory(Math.Clamp(60000 / Math.Max(1, _settings.PollIntervalMs), 30, 240));
+        // 15-minute coverage for the graph range selector: 15 min / poll interval
+        // samples (1 s poll -> 900; 250 ms poll clamps at 1200, 5 s poll -> 180).
+        _history = new SpeedHistory(Math.Clamp(900000 / Math.Max(1, _settings.PollIntervalMs), 60, 1200));
         // Save cadence: 60 s worth of poll ticks, clamped to a sane range.
         _saveEveryTicks = Math.Clamp(60000 / Math.Max(1, _settings.PollIntervalMs), 5, 600);
         _historyStore.Load();
@@ -513,26 +519,200 @@ public sealed partial class MainWindow : Window
 
     private void DrawGraph()
     {
-        var samples = _history.Samples;
-        if (samples.Count == 0) return;
+        if (_history is null) return; // XAML load can fire the range selector's Checked before the ctor finishes wiring state
+        var all = _history.Samples;
+        if (all.Count == 0) return;
+
+        // Take the window the selector asks for (samples arrive in order; last N).
+        var take = Math.Min(all.Count, Math.Max(2, _graphRangeSeconds * 1000 / Math.Max(1, _settings.PollIntervalMs)));
+        var samples = all.Skip(all.Count - take).Take(take).ToList();
+        _graphSamples = samples;
+
         var width = GraphCanvas.ActualWidth > 0 ? GraphCanvas.ActualWidth : 800;
-        var height = GraphCanvas.ActualHeight > 0 ? GraphCanvas.ActualHeight : 180;
-        var max = Math.Max(1, samples.Max(s => Math.Max(s.DownloadBps, s.UploadBps)));
+        var height = GraphCanvas.ActualHeight > 0 ? GraphCanvas.ActualHeight : 220;
+        HoverLine.Y2 = height;
+
+        // Nice Y scale: headroom then round up to a 1/2/5 x 10^k step.
+        var rawMax = samples.Max(s => Math.Max(s.DownloadBps, s.UploadBps));
+        var max = NiceCeil(rawMax <= 0 ? 1 : rawMax * 1.15);
         var mid = max / 2;
 
-        // Y-axis indicators
         MaxLabel.Text = SpeedFormatter.Format(max);
         MidLabel.Text = SpeedFormatter.Format(mid);
         MinLabel.Text = "0 B/s";
 
-        DownLine.Points.Clear();
-        UpLine.Points.Clear();
+        BuildGrid(width, height);
+
+        // Map to screen space: 4px padding top/bottom, x spans full width.
+        var pts = new List<Point>(samples.Count);
+        var ptsUp = new List<Point>(samples.Count);
         for (int i = 0; i < samples.Count; i++)
         {
-            var x = width * i / Math.Max(1, samples.Count - 1);
-            DownLine.Points.Add(new Point(x, height - (samples[i].DownloadBps / max) * (height - 8) - 4));
-            UpLine.Points.Add(new Point(x, height - (samples[i].UploadBps / max) * (height - 8) - 4));
+            var x = samples.Count == 1 ? width : width * i / (samples.Count - 1);
+            pts.Add(new Point(x, height - 4 - (samples[i].DownloadBps / max) * (height - 8)));
+            ptsUp.Add(new Point(x, height - 4 - (samples[i].UploadBps / max) * (height - 8)));
         }
+
+        var downGeo = BuildSmoothGeometry(pts, height, closeToBottom: true);
+        var downPts = new PointCollection();
+        foreach (var p in pts) downPts.Add(p);
+        DownLine.Points = downPts;
+        DownArea.Data = downGeo;
+        DownArea.Fill = MakeGradientFill("#0078D4");
+
+        var upGeo = BuildSmoothGeometry(ptsUp, height, closeToBottom: true);
+        var upPts = new PointCollection();
+        foreach (var p in ptsUp) upPts.Add(p);
+        UpLine.Points = upPts;
+        UpArea.Data = upGeo;
+        UpArea.Fill = MakeGradientFill("#D83B01");
+
+        HideHover();
+    }
+
+    /// <summary>Round a value up to a human-friendly 1 / 2.5 / 5 x 10^k ceiling.</summary>
+    private static double NiceCeil(double v)
+    {
+        var exp = Math.Floor(Math.Log10(v));
+        var base10 = Math.Pow(10, exp);
+        var frac = v / base10;
+        double nice = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 2.5 ? 2.5 : frac <= 5 ? 5 : 10;
+        return nice * base10;
+    }
+
+    /// <summary>Dashed gridlines at 25/50/75% (baseline included via border styling).</summary>
+    private void BuildGrid(double width, double height)
+    {
+        GraphGrid.Children.Clear();
+        for (var f = 0.25; f <= 0.75; f += 0.25)
+        {
+            var line = new Microsoft.UI.Xaml.Shapes.Line
+            {
+                X1 = 0,
+                X2 = width,
+                Y1 = height * f,
+                Y2 = height * f,
+                StrokeThickness = 1,
+                StrokeDashArray = new DoubleCollection { 4, 4 },
+                Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(40, 128, 128, 128))
+            };
+            GraphGrid.Children.Add(line);
+        }
+    }
+
+    /// <summary>
+    /// Catmull-Rom spline through the points as cubic beziers (WinUI 3 has no
+    /// StreamGeometry, so this builds a PathGeometry with PolyBezierSegments);
+    /// optionally closed down to the baseline for the gradient area fill.
+    /// </summary>
+    private static Geometry BuildSmoothGeometry(IReadOnlyList<Point> pts, double height, bool closeToBottom)
+    {
+        var geo = new PathGeometry();
+        if (pts.Count == 0) return geo;
+
+        var figure = new PathFigure { StartPoint = pts[0], IsClosed = false };
+        var bez = new PolyBezierSegment();
+        if (pts.Count == 1)
+        {
+            bez.Points.Add(new Point(pts[0].X + 0.01, pts[0].Y));
+        }
+        else
+        {
+            for (int i = 0; i < pts.Count - 1; i++)
+            {
+                var p0 = i > 0 ? pts[i - 1] : pts[0];
+                var p1 = pts[i];
+                var p2 = pts[i + 1];
+                var p3 = i + 2 < pts.Count ? pts[i + 2] : p2;
+                bez.Points.Add(new Point(p1.X + (p2.X - p0.X) / 6.0, p1.Y + (p2.Y - p0.Y) / 6.0));
+                bez.Points.Add(new Point(p2.X - (p3.X - p1.X) / 6.0, p2.Y - (p3.Y - p1.Y) / 6.0));
+                bez.Points.Add(p2);
+            }
+        }
+        figure.Segments.Add(bez);
+        if (closeToBottom)
+        {
+            var last = pts[pts.Count - 1];
+            var first = pts[0];
+            figure.Segments.Add(new LineSegment { Point = new Point(last.X, height) });
+            figure.Segments.Add(new LineSegment { Point = new Point(first.X, height) });
+        }
+        geo.Figures.Add(figure);
+        return geo;
+    }
+
+    private static Brush MakeGradientFill(string hex)
+    {
+        var r = Convert.ToByte(hex.Substring(1, 2), 16);
+        var g = Convert.ToByte(hex.Substring(3, 2), 16);
+        var b = Convert.ToByte(hex.Substring(5, 2), 16);
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(0, 1),
+            MappingMode = BrushMappingMode.RelativeToBoundingBox
+        };
+        brush.GradientStops.Add(new GradientStop { Color = Windows.UI.Color.FromArgb(0x99, r, g, b), Offset = 0 });
+        brush.GradientStops.Add(new GradientStop { Color = Windows.UI.Color.FromArgb(0x10, r, g, b), Offset = 1 });
+        return brush;
+    }
+
+    private void GraphRange_Changed(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton rb && int.TryParse(rb.Tag?.ToString(), out var secs))
+        {
+            _graphRangeSeconds = secs;
+            if (_history is not null) DrawGraph();
+        }
+    }
+
+    private void GraphCanvas_SizeChanged(object sender, SizeChangedEventArgs e) => DrawGraph();
+
+    private void GraphCanvas_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (_graphSamples.Count == 0) return;
+        var width = GraphCanvas.ActualWidth;
+        var height = GraphCanvas.ActualHeight;
+        if (width <= 0 || height <= 0) return;
+        var pos = e.GetCurrentPoint(GraphCanvas).Position;
+
+        var n = _graphSamples.Count;
+        var idx = Math.Clamp((int)Math.Round(pos.X / width * (n - 1)), 0, n - 1);
+        var s = _graphSamples[idx];
+        var x = n == 1 ? width : width * idx / (n - 1);
+        var rawMax = _graphSamples.Max(v => Math.Max(v.DownloadBps, v.UploadBps));
+        var max = NiceCeil(rawMax <= 0 ? 1 : rawMax * 1.15);
+        var yDown = height - 4 - (s.DownloadBps / max) * (height - 8);
+        var yUp = height - 4 - (s.UploadBps / max) * (height - 8);
+
+        HoverLine.Visibility = Visibility.Visible;
+        HoverDotDown.Visibility = Visibility.Visible;
+        HoverDotUp.Visibility = Visibility.Visible;
+        HoverLine.X1 = x;
+        HoverLine.X2 = x;
+        Canvas.SetLeft(HoverDotDown, x - 4);
+        Canvas.SetTop(HoverDotDown, yDown - 4);
+        Canvas.SetLeft(HoverDotUp, x - 4);
+        Canvas.SetTop(HoverDotUp, yUp - 4);
+
+        HoverTime.Text = s.Timestamp.LocalDateTime.ToString("HH:mm:ss");
+        HoverDown.Text = $"↓ {SpeedFormatter.Format(s.DownloadBps)}";
+        HoverUp.Text = $"↑ {SpeedFormatter.Format(s.UploadBps)}";
+        HoverCard.Visibility = Visibility.Visible;
+        // Flip to the left of the crosshair near the right edge.
+        var flip = pos.X > width * 0.72;
+        Canvas.SetLeft(HoverCard, flip ? Math.Max(0, x - 110) : Math.Min(width - 100, x + 12));
+        Canvas.SetTop(HoverCard, 8);
+    }
+
+    private void GraphCanvas_PointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) => HideHover();
+
+    private void HideHover()
+    {
+        HoverLine.Visibility = Visibility.Collapsed;
+        HoverDotDown.Visibility = Visibility.Collapsed;
+        HoverDotUp.Visibility = Visibility.Collapsed;
+        HoverCard.Visibility = Visibility.Collapsed;
     }
 
     private async Task LatencyLoopAsync()

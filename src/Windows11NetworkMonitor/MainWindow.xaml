@@ -68,7 +68,18 @@
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <StackPanel Spacing="8">
-                        <TextBlock Text="Live graph (last minute)" FontWeight="SemiBold" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Live graph" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                <RadioButton x:Name="Range60Btn" Content="1 min" GroupName="GraphRange" IsChecked="True" Checked="GraphRange_Changed" Tag="60" Style="{StaticResource DefaultRadioButtonStyle}" MinWidth="0" Padding="10,2" />
+                                <RadioButton x:Name="Range300Btn" Content="5 min" GroupName="GraphRange" Checked="GraphRange_Changed" Tag="300" Style="{StaticResource DefaultRadioButtonStyle}" MinWidth="0" Padding="10,2" />
+                                <RadioButton x:Name="Range900Btn" Content="15 min" GroupName="GraphRange" Checked="GraphRange_Changed" Tag="900" Style="{StaticResource DefaultRadioButtonStyle}" MinWidth="0" Padding="10,2" />
+                            </StackPanel>
+                        </Grid>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="64" />
@@ -80,12 +91,30 @@
                                 <TextBlock x:Name="MidLabel" Text="0 B/s" FontSize="11" Opacity="0.7" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" />
                                 <TextBlock x:Name="MinLabel" Text="0 B/s" FontSize="11" Opacity="0.7" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,0" />
                             </Grid>
-                            <Canvas x:Name="GraphCanvas" Grid.Column="1" Height="180"
-                                    Tapped="GraphCanvas_Tapped">
-                                <Line X1="0" Y1="60" X2="800" Y2="60" Stroke="{ThemeResource CardStrokeColorDefaultBrush}" StrokeThickness="1" StrokeDashArray="4 4" />
-                                <Line X1="0" Y1="120" X2="800" Y2="120" Stroke="{ThemeResource CardStrokeColorDefaultBrush}" StrokeThickness="1" StrokeDashArray="4 4" />
-                                <Polyline x:Name="DownLine" Stroke="#0078D4" StrokeThickness="2" />
-                                <Polyline x:Name="UpLine" Stroke="#D83B01" StrokeThickness="2" />
+                            <Canvas x:Name="GraphCanvas" Grid.Column="1" Height="220" Background="Transparent"
+                                    Tapped="GraphCanvas_Tapped"
+                                    PointerMoved="GraphCanvas_PointerMoved"
+                                    PointerExited="GraphCanvas_PointerExited"
+                                    SizeChanged="GraphCanvas_SizeChanged">
+                                <Canvas x:Name="GraphGrid" />
+                                <!-- gradient area fills (built in code-behind) -->
+                                <Path x:Name="DownArea" StrokeThickness="0" Opacity="0.35" />
+                                <Path x:Name="UpArea" StrokeThickness="0" Opacity="0.35" />
+                                <Polyline x:Name="DownLine" Stroke="#0078D4" StrokeThickness="2" StrokeLineJoin="Round" />
+                                <Polyline x:Name="UpLine" Stroke="#D83B01" StrokeThickness="2" StrokeLineJoin="Round" />
+                                <!-- crosshair + hover markers (hidden until pointer over) -->
+                                <Line x:Name="HoverLine" Stroke="{ThemeResource TextFillColorSecondaryBrush}" StrokeThickness="1" StrokeDashArray="2 2" Visibility="Collapsed" Y1="0" Y2="220" />
+                                <Ellipse x:Name="HoverDotDown" Width="8" Height="8" Fill="#0078D4" Stroke="{ThemeResource SolidBackgroundFillColorBaseBrush}" StrokeThickness="2" Visibility="Collapsed" />
+                                <Ellipse x:Name="HoverDotUp" Width="8" Height="8" Fill="#D83B01" Stroke="{ThemeResource SolidBackgroundFillColorBaseBrush}" StrokeThickness="2" Visibility="Collapsed" />
+                                <Border x:Name="HoverCard" CornerRadius="6" Padding="8,6" Visibility="Collapsed"
+                                        Background="{ThemeResource AcrylicBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock x:Name="HoverTime" FontSize="11" Opacity="0.7" />
+                                        <TextBlock x:Name="HoverDown" FontSize="12" Foreground="#0078D4" />
+                                        <TextBlock x:Name="HoverUp" FontSize="12" Foreground="#D83B01" />
+                                    </StackPanel>
+                                </Border>
                             </Canvas>
                         </Grid>
                         <StackPanel Orientation="Horizontal" Spacing="16">

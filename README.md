@@ -25,7 +25,7 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 
 - [x] Live download / upload speed (auto `B/s → KB/s → MB/s → GB/s`) for **WiFi, Ethernet, USB tethering, mobile hotspot — any adapter**
 - [x] Auto-selects the adapter that owns the default route (internet); **Combined** mode sums all
-- [x] **Live graph (last 60 s)** — blue = download, orange = upload, left axis `KB/MB/s` scale + gridlines
+- [x] **Live graph (revamped in v1.3.0)** — selectable **1 min / 5 min / 15 min** ranges, smooth gradient-filled area chart (blue = download, orange = upload) with a nice-tick Y-axis, dashed gridlines, and a **hover crosshair** showing the exact time and ↓/↑ values at any point
 - [x] **Statistics** — session ↓/↑, today ↓/↑, peak ↓/↑, average, ICMP latency
 - [x] **Recent history (last 7 days)** — daily ↓/↑ totals in Statistics (scrolls with the page, no inner list)
 - [x] **Per-app usage (estimated, toggleable)** — *Apps using network now* (live TCP + UDP owner processes, IPv4 + IPv6) + *Top app today* attributed by open-connection share

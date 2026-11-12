@@ -1,6 +1,19 @@
 # Roadmap
 
 ## Shipped
+### v1.3.0 (via GitHub Releases — folder zip)
+- [x] Live graph revamp (UI modernization phase 1):
+      time-range selector (1 min / 5 min / 15 min) with the speed-history buffer
+      resized to hold up to 15 minutes of samples (clamped 60-1200 by poll interval)
+- [x] Smooth Catmull-Rom spline rendering (cubic bezier PathGeometry) with
+      gradient-filled areas under both series; nice-tick Y auto-scaling
+      (1 / 2.5 / 5 x 10^k ceilings with 15% headroom)
+- [x] Hover crosshair UI: dashed vertical line + download/upload marker dots +
+      a tooltip card showing the exact time and speeds at the hovered sample
+      (flips to the left near the right edge); grid rebuilt on reflow
+- [x] Dashboard graph card restyled (title row with inline range selector,
+      taller 220px canvas, legend kept)
+
 ### v1.1.0 (via GitHub Releases — folder zip)
 - [x] Export history to CSV (Settings → writes device + per-app daily totals to
       `%LOCALAPPDATA%\...\exports\*.csv`, UTF-8 BOM, opens the folder in Explorer)
@@ -99,6 +112,12 @@
 - [x] Initial feature freeze (see git history)
 
 ## Next
+- [ ] UI modernization phase 2 - statistics & trends (7/30/90-day ranges,
+      weekly/monthly aggregation, 7-day moving-average trend line,
+      week-over-week comparison cards, projections, hover on daily bars,
+      per-day per-app breakdown)
+- [ ] UI modernization phase 3 - Fluent polish (Mica/Acrylic backdrop, status
+      chip, refined dark palette, entrance animations)
 - [ ] Screenshots under `docs/screenshots/`
 - [ ] LiveChartsCore graph (zoom, tooltips, fill)
 - [ ] Native `GetIfTable2` path (64-bit counters, link speed)
