@@ -1,6 +1,20 @@
 # Roadmap
 
 ## Shipped
+### v1.4.0 (via GitHub Releases — folder zip)
+- [x] Statistics & trends (UI modernization phase 2):
+      history chart + daily-totals list now follow a 7 / 30 / 90-day range selector
+- [x] 7-day moving-average trend line drawn over the daily bars (full windows
+      only, dashed green, hover tooltip)
+- [x] Tap a bar to open that day's per-app breakdown (estimated attribution,
+      top 8 apps) with a hide control and a purple highlight on the selected bar
+- [x] Trend cards: this week vs last week and month-to-date vs the same span
+      last month (byte totals + % delta with up/down arrows), projected
+      month-end at the current pace, best day + daily average for the range
+- [x] Weekly totals (last 12 Monday-start weeks) and monthly totals (last 12
+      calendar months) lists under the daily totals
+- [x] Bar width capped at 26px so 90-day ranges stay readable
+
 ### v1.3.0 (via GitHub Releases — folder zip)
 - [x] Live graph revamp (UI modernization phase 1):
       time-range selector (1 min / 5 min / 15 min) with the speed-history buffer
@@ -112,10 +126,6 @@
 - [x] Initial feature freeze (see git history)
 
 ## Next
-- [ ] UI modernization phase 2 - statistics & trends (7/30/90-day ranges,
-      weekly/monthly aggregation, 7-day moving-average trend line,
-      week-over-week comparison cards, projections, hover on daily bars,
-      per-day per-app breakdown)
 - [ ] UI modernization phase 3 - Fluent polish (Mica/Acrylic backdrop, status
       chip, refined dark palette, entrance animations)
 - [ ] Screenshots under `docs/screenshots/`

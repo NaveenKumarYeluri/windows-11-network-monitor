@@ -54,6 +54,12 @@ public sealed partial class MainWindow : Window
     private int _graphRangeSeconds = 60; // 60 / 300 / 900 via the range selector
     private IReadOnlyList<SpeedSample> _graphSamples = Array.Empty<SpeedSample>(); // samples currently drawn (hover maps onto these)
 
+    // --- Statistics & trends state (phase 2) ---
+    private int _statsRangeDays = 30; // 7 / 30 / 90 via the stats range selector
+    private DateOnly? _selectedDay; // day whose per-app breakdown is shown (bar tap)
+    private string _trendCsv = string.Empty;
+    private string _dayDetailCsv = string.Empty;
+
     private TrayIconService? _tray;
     private HudWindow? _hud;
     private SettingsWindow? _settingsWin;
@@ -79,8 +85,8 @@ public sealed partial class MainWindow : Window
         SetWindowIcon();
         ((FrameworkElement)Content).RequestedTheme = GetWantTheme();
         AppWindow.Resize(new SizeInt32(1180, 640));
-        // Repaint the 30-day bar chart when the dashboard reflows (window resize).
-        Chart30Canvas.SizeChanged += (_, _) => UpdateHistory30(force: true);
+        // Repaint the history bar chart when the dashboard reflows (window resize).
+        ChartCanvas.SizeChanged += (_, _) => UpdateHistoryChart(force: true);
         AppWindow.Closing += AppWindow_Closing;
         _adapters.Changed += OnSpeedChanged;
         Closed += MainWindow_Closed;
@@ -304,7 +310,10 @@ public sealed partial class MainWindow : Window
             // 6/7 stay reachable and the page never snaps to day 1 on its own.
             UpdateAdapters(all);
             UpdateHistory();
-            UpdateHistory30();
+            UpdateHistoryChart();
+            UpdateTrendCards();
+            UpdateAggregates();
+            UpdateDayDetail();
             UpdateTopApps();
             UpdateApps();
             DrawGraph();
@@ -355,46 +364,64 @@ public sealed partial class MainWindow : Window
 
     private void UpdateHistory()
     {
-        var recent = _historyStore.Recent(7);
+        var recent = _historyStore.Recent(_statsRangeDays);
+        DailyListTitle.Text = $"Daily totals (last {_statsRangeDays} days)";
         // Render newest day first is left as-is (oldest→newest matches earlier build);
-        // all 7 rows are now visible via outer scroll, no inner scrollbar needed.
+        // all rows are now visible via outer scroll, no inner scrollbar needed.
         var lines = recent.Select(r =>
             $"{r.Date:ddd MMM dd}    {SpeedFormatter.FormatBytes(r.Down)} ↓    {SpeedFormatter.FormatBytes(r.Up)} ↑")
             .ToArray();
         RenderInto(HistoryPanel, ref _lastHistoryCsv, lines, saveOffset: true);
     }
 
-    private string _chart30Csv = string.Empty;
+    private void StatsRange_Changed(object sender, RoutedEventArgs e)
+    {
+        if (sender is RadioButton rb && int.TryParse(rb.Tag?.ToString(), out var days))
+        {
+            _statsRangeDays = days;
+            if (_historyStore is not null)
+            {
+                UpdateHistory();
+                UpdateHistoryChart(force: true);
+                UpdateTrendCards();
+                UpdateAggregates();
+            }
+        }
+    }
+
+    private string _chartCsv = string.Empty;
 
     /// <summary>
-    /// 30-day daily-totals bar chart (stacked: blue download, orange upload on
-    /// top). Repaints only when a day's totals change (string-compare like the
-    /// other updaters) or when the canvas reflows; hover shows exact totals.
+    /// Daily-totals bar chart (stacked: blue download, orange upload on top) over
+    /// the selected range (7/30/90 days), plus a 7-day moving-average trend line.
+    /// Repaints only when a day's totals change (string-compare like the
+    /// other updaters), on reflow, or on a range switch; hover shows exact totals
+    /// and tapping a bar opens that day's per-app breakdown.
     /// </summary>
-    private void UpdateHistory30(bool force = false)
+    private void UpdateHistoryChart(bool force = false)
     {
-        var rows = _historyStore.Recent(30);
+        var rows = _historyStore.Recent(_statsRangeDays);
         var csv = string.Join(";", rows.Select(r => $"{r.Date:yyyyMMdd}|{r.Down}|{r.Up}"));
-        if (!force && csv == _chart30Csv) return;
-        var width = Chart30Canvas.ActualWidth;
+        if (!force && csv == _chartCsv) return;
+        var width = ChartCanvas.ActualWidth;
         if (double.IsNaN(width) || width < 40) return; // layout not ready yet; a later tick repaints
-        _chart30Csv = csv;
+        _chartCsv = csv;
 
-        var canvas = Chart30Canvas;
+        var canvas = ChartCanvas;
         canvas.Children.Clear();
         var maxBytes = rows.Max(r => r.Down + r.Up);
         var maxBytesSafe = maxBytes <= 0 ? 1 : maxBytes;
 
-        Chart30Max.Text = SpeedFormatter.FormatBytes(maxBytes);
-        Chart30Mid.Text = SpeedFormatter.FormatBytes(maxBytes / 2);
-        Chart30Min.Text = "0";
+        ChartMax.Text = SpeedFormatter.FormatBytes(maxBytes);
+        ChartMid.Text = SpeedFormatter.FormatBytes(maxBytes / 2);
+        ChartMin.Text = "0";
 
         var height = canvas.Height;
         var top = 4.0;
         var barH = height - top - 2;
         var yBase = top + barH;
         var slot = width / rows.Count;
-        var barW = Math.Max(2.0, slot - 2);
+        var barW = Math.Max(2.0, Math.Min(26.0, slot - 2));
 
         var downBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x00, 0x78, 0xD4));
         var upBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0xD8, 0x3B, 0x01));
@@ -417,23 +444,23 @@ public sealed partial class MainWindow : Window
             StrokeThickness = 1
         });
 
+        var selectedBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x9A, 0x59, 0xD9));
+
         for (var i = 0; i < rows.Count; i++)
         {
             var (date, down, up) = rows[i];
             var x = i * slot + (slot - barW) / 2;
             var total = down + up;
             var tooltip = total == 0
-                ? $"{date:ddd MMM dd}\nNo traffic recorded"
+                ? $"{date:ddd MMM dd}\nNo traffic recorded (tap for details)"
                 : down > 0
                     ? $"{date:ddd MMM dd}\n{SpeedFormatter.FormatBytes(down)} down + {SpeedFormatter.FormatBytes(up)} up"
                     : $"{date:ddd MMM dd}\n{SpeedFormatter.FormatBytes(up)} up";
+            Microsoft.UI.Xaml.Shapes.Rectangle marker;
             if (total == 0)
             {
-                var marker = new Microsoft.UI.Xaml.Shapes.Rectangle { Width = barW, Height = 1, Fill = zeroBrush };
-                Canvas.SetLeft(marker, x);
+                marker = new Microsoft.UI.Xaml.Shapes.Rectangle { Width = barW, Height = 1, Fill = zeroBrush };
                 Canvas.SetTop(marker, yBase);
-                Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(marker, tooltip);
-                canvas.Children.Add(marker);
             }
             else
             {
@@ -442,15 +469,171 @@ public sealed partial class MainWindow : Window
                 var rectDown = new Microsoft.UI.Xaml.Shapes.Rectangle { Width = barW, Height = Math.Max(1, hDown), Fill = downBrush };
                 Canvas.SetLeft(rectDown, x);
                 Canvas.SetTop(rectDown, yBase - hDown);
-                var rectUp = new Microsoft.UI.Xaml.Shapes.Rectangle { Width = barW, Height = Math.Max(1, hUp), Fill = upBrush };
-                Canvas.SetLeft(rectUp, x);
-                Canvas.SetTop(rectUp, yBase - hDown - hUp);
+                AttachDayTap(rectDown, date);
                 Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(rectDown, tooltip);
-                Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(rectUp, tooltip);
                 canvas.Children.Add(rectDown);
-                canvas.Children.Add(rectUp);
+                marker = new Microsoft.UI.Xaml.Shapes.Rectangle { Width = barW, Height = Math.Max(1, hUp), Fill = upBrush };
+                Canvas.SetTop(marker, yBase - hDown - Math.Max(1, hUp));
             }
+            Canvas.SetLeft(marker, x);
+            AttachDayTap(marker, date);
+            Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(marker, tooltip);
+            // Highlight the day whose breakdown is currently open.
+            if (_selectedDay == date) marker.Stroke = selectedBrush;
+            canvas.Children.Add(marker);
         }
+
+        // 7-day moving-average trend line over the daily totals (full windows only).
+        var totals = rows.Select(r => (double)(r.Down + r.Up)).ToList();
+        const int maWindow = 7;
+        var maPts = new List<Point>();
+        for (var i = maWindow - 1; i < totals.Count; i++)
+        {
+            maPts.Add(new Point(i * slot + slot / 2, yBase - barH * (totals.Skip(i - maWindow + 1).Take(maWindow).Average()) / maxBytesSafe));
+        }
+        if (maPts.Count >= 2)
+        {
+            var trend = new Microsoft.UI.Xaml.Shapes.Polyline
+            {
+                Stroke = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x6B, 0xB6, 0x78)),
+                StrokeThickness = 2,
+                StrokeDashArray = new DoubleCollection { 1, 1 }
+            };
+            foreach (var p in maPts) trend.Points.Add(p);
+            Microsoft.UI.Xaml.Controls.ToolTipService.SetToolTip(trend, "7-day moving average");
+            canvas.Children.Add(trend);
+        }
+    }
+
+    private void AttachDayTap(Microsoft.UI.Xaml.FrameworkElement el, DateOnly date)
+    {
+        el.Tag = date;
+        el.Tapped += DayBar_Tapped;
+    }
+
+    private void DayBar_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
+    {
+        if (sender is Microsoft.UI.Xaml.FrameworkElement { Tag: DateOnly d })
+        {
+            _selectedDay = d;
+            UpdateHistoryChart(force: true); // re-highlight the tapped bar
+        }
+    }
+
+    private void DayDetailHide_Click(object sender, RoutedEventArgs e)
+    {
+        _selectedDay = null;
+        DayDetailPanel.Visibility = Visibility.Collapsed;
+        UpdateHistoryChart(force: true); // clear the highlight
+    }
+
+    /// <summary>Per-app breakdown of the tapped day (estimated attribution).</summary>
+    private void UpdateDayDetail()
+    {
+        if (_selectedDay is null)
+        {
+            if (DayDetailPanel.Visibility != Visibility.Collapsed) DayDetailPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+        var d = _selectedDay.Value;
+        var top = _historyStore.TopApps(d).Take(8).ToList();
+        var header = $"{d:ddd MMM dd} - per-app breakdown (estimated)";
+        var lines = top.Count == 0
+            ? new[] { "No per-app data recorded for this day." }
+            : top.Select(a => $"{a.App}    {SpeedFormatter.FormatBytes(a.Down)} ↓    {SpeedFormatter.FormatBytes(a.Up)} ↑").ToArray();
+        DayDetailTitle.Text = header;
+        DayDetailPanel.Visibility = Visibility.Visible;
+        RenderInto(DayDetailApps, ref _dayDetailCsv, lines, saveOffset: false);
+    }
+
+    /// <summary>
+    /// Trend cards: this-week vs prior-week, month-to-date vs the same span last
+    /// month, projected month-end at the current pace, best day + daily average
+    /// over the selected range. All cheap math over the daily rows, repaints on
+    /// string-compare only.
+    /// </summary>
+    private void UpdateTrendCards()
+    {
+        var all = _historyStore.Recent(Math.Max(_statsRangeDays, 62)); // 62 covers two 31-day months
+        var csv = string.Join(";", all.Select(r => $"{r.Date:yyyyMMdd}|{r.Down}|{r.Up}")) + $"|{_statsRangeDays}";
+        if (csv == _trendCsv) return;
+        _trendCsv = csv;
+
+        long Sum(int skip, int take) => all.Skip(skip).Take(take).Aggregate(0L, (acc, r) => acc + r.Down + r.Up);
+        string Delta(long cur, long prev)
+        {
+            if (prev == 0) return cur == 0 ? "—" : $"new · {SpeedFormatter.FormatBytes(cur)}";
+            var pct = Math.Round((cur - prev) * 100.0 / prev);
+            var arrow = pct > 0 ? "↑" : pct < 0 ? "↓" : "→";
+            return $"{arrow} {Math.Abs(pct)}% vs {SpeedFormatter.FormatBytes(prev)}";
+        }
+
+        var last7 = Sum(all.Count - 7, 7);
+        var prev7 = Sum(all.Count - 14, 7);
+        WeekTotal.Text = SpeedFormatter.FormatBytes(last7);
+        WeekDelta.Text = Delta(last7, prev7);
+
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var monthStart = new DateOnly(today.Year, today.Month, 1);
+        var monthToDate = all.Where(r => r.Date >= monthStart).Aggregate(0L, (acc, r) => acc + r.Down + r.Up);
+        var lastMonthStart = monthStart.AddMonths(-1);
+        var lastMonthEnd = lastMonthStart.AddDays(Math.Min(today.Day, DateTime.DaysInMonth(lastMonthStart.Year, lastMonthStart.Month)) - 1);
+        var lastMonthSame = all.Where(r => r.Date >= lastMonthStart && r.Date <= lastMonthEnd).Aggregate(0L, (acc, r) => acc + r.Down + r.Up);
+        MonthTotal.Text = SpeedFormatter.FormatBytes(monthToDate);
+        MonthDelta.Text = Delta(monthToDate, lastMonthSame);
+
+        var daysElapsed = today.Day;
+        var daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
+        ProjectionText.Text = daysElapsed == 0 ? "0" : SpeedFormatter.FormatBytes(monthToDate * daysInMonth / daysElapsed);
+
+        var rangeDays = Math.Min(_statsRangeDays, all.Count);
+        var range = all.Skip(all.Count - rangeDays).ToList();
+        var best = range.OrderByDescending(r => r.Down + r.Up).First();
+        var totalInRange = range.Aggregate(0L, (acc, r) => acc + r.Down + r.Up);
+        BestDayText.Text = $"{SpeedFormatter.FormatBytes(best.Down + best.Up)} ({best.Date:MMM dd})";
+        AvgDayText.Text = $"avg {SpeedFormatter.FormatBytes(totalInRange / Math.Max(1, range.Count))}/day";
+    }
+
+    private string _aggCsv = string.Empty;
+    private string _weeklyRenderCsv = string.Empty;
+    private string _monthlyRenderCsv = string.Empty;
+
+    /// <summary>Weekly (last 12 Monday-start weeks) and monthly (last 12 calendar months) totals.</summary>
+    private void UpdateAggregates()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var dayOffset = ((int)today.DayOfWeek + 6) % 7; // Monday = 0
+        var thisWeekStart = today.AddDays(-dayOffset);
+        var weeksStart = thisWeekStart.AddDays(-77); // 12 weeks
+        var monthsStart = new DateOnly(today.Year, today.Month, 1).AddMonths(-11); // 12 calendar months
+        var from = weeksStart < monthsStart ? weeksStart : monthsStart;
+        var all = _historyStore.Recent(today.DayNumber - from.DayNumber + 1);
+
+        var csv = string.Join(";", all.Select(r => $"{r.Date:yyyyMMdd}|{r.Down}|{r.Up}")) + $"|{from:yyyyMMdd}";
+        if (csv == _aggCsv) return;
+        _aggCsv = csv;
+
+        var weekRows = new List<(DateOnly WeekStart, long Down, long Up)>();
+        for (var w = 0; w < 12; w++)
+        {
+            var start = thisWeekStart.AddDays(-7 * w);
+            var rows = all.Where(r => r.Date >= start && r.Date < start.AddDays(7)).ToList();
+            weekRows.Add((start, rows.Sum(r => r.Down), rows.Sum(r => r.Up)));
+        }
+        var wLines = weekRows.Select(w =>
+            $"wk {w.WeekStart:MMM dd}    {SpeedFormatter.FormatBytes(w.Down)} ↓    {SpeedFormatter.FormatBytes(w.Up)} ↑").ToArray();
+        RenderInto(WeeklyPanel, ref _weeklyRenderCsv, wLines, saveOffset: true);
+
+        var monthRows = new List<(int Year, int Month, long Down, long Up)>();
+        for (var m = 0; m < 12; m++)
+        {
+            var first = new DateOnly(today.Year, today.Month, 1).AddMonths(-m);
+            var rows = all.Where(r => r.Date.Year == first.Year && r.Date.Month == first.Month).ToList();
+            monthRows.Add((first.Year, first.Month, rows.Sum(r => r.Down), rows.Sum(r => r.Up)));
+        }
+        var mLines = monthRows.Select(m =>
+            $"{m.Year:0000}-{m.Month:00}    {SpeedFormatter.FormatBytes(m.Down)} ↓    {SpeedFormatter.FormatBytes(m.Up)} ↑").ToArray();
+        RenderInto(MonthlyPanel, ref _monthlyRenderCsv, mLines, saveOffset: true);
     }
 
     private void UpdateTopApps()

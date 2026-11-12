@@ -166,25 +166,90 @@
                             </StackPanel>
                         </Grid>
                         <StackPanel Spacing="6">
-                            <TextBlock Text="History chart (last 30 days)" FontWeight="SemiBold" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="History chart" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                    <RadioButton x:Name="StatsRange7Btn" Content="7 days" GroupName="StatsRange" Checked="StatsRange_Changed" Tag="7" Style="{StaticResource DefaultRadioButtonStyle}" MinWidth="0" Padding="10,2" />
+                                    <RadioButton x:Name="StatsRange30Btn" Content="30 days" GroupName="StatsRange" IsChecked="True" Checked="StatsRange_Changed" Tag="30" Style="{StaticResource DefaultRadioButtonStyle}" MinWidth="0" Padding="10,2" />
+                                    <RadioButton x:Name="StatsRange90Btn" Content="90 days" GroupName="StatsRange" Checked="StatsRange_Changed" Tag="90" Style="{StaticResource DefaultRadioButtonStyle}" MinWidth="0" Padding="10,2" />
+                                </StackPanel>
+                            </Grid>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="56" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <Grid Grid.Column="0">
-                                    <TextBlock x:Name="Chart30Max" Text="0" FontSize="11" Opacity="0.7" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,0,8,0" TextWrapping="Wrap" />
-                                    <TextBlock x:Name="Chart30Mid" Text="0" FontSize="11" Opacity="0.7" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" TextWrapping="Wrap" />
-                                    <TextBlock x:Name="Chart30Min" Text="0" FontSize="11" Opacity="0.7" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,0" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="ChartMax" Text="0" FontSize="11" Opacity="0.7" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,0,8,0" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="ChartMid" Text="0" FontSize="11" Opacity="0.7" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="ChartMin" Text="0" FontSize="11" Opacity="0.7" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="0,0,8,0" TextWrapping="Wrap" />
                                 </Grid>
-                                <Canvas x:Name="Chart30Canvas" Grid.Column="1" Height="150" />
+                                <Canvas x:Name="ChartCanvas" Grid.Column="1" Height="170" />
                             </Grid>
-                            <TextBlock Text="Stacked daily bars: blue = download, orange = upload on top. Hover a bar for that day's exact totals." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+                            <TextBlock Text="Stacked daily bars (tap a bar for that day's per-app breakdown). The thin line is the 7-day moving average. Blue = download, orange = upload." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+                            <!-- Per-day breakdown (shown when a bar is tapped) -->
+                            <StackPanel x:Name="DayDetailPanel" Spacing="2" Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock x:Name="DayDetailTitle" FontWeight="SemiBold" />
+                                    <HyperlinkButton x:Name="DayDetailHide" Content="hide" Padding="0" Click="DayDetailHide_Click" />
+                                </StackPanel>
+                                <StackPanel x:Name="DayDetailApps" Spacing="2" />
+                            </StackPanel>
                         </StackPanel>
+
+                        <!-- Trends -->
                         <StackPanel Spacing="6">
-                            <TextBlock Text="Recent history (last 7 days)" FontWeight="SemiBold" />
+                            <TextBlock Text="Trends" FontWeight="SemiBold" />
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" CornerRadius="8" Padding="10,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="This week vs last" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="WeekTotal" Text="0" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="WeekDelta" Text="—" FontSize="12" Opacity="0.8" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" CornerRadius="8" Padding="10,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Month-to-date vs last month" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="MonthTotal" Text="0" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="MonthDelta" Text="—" FontSize="12" Opacity="0.8" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" CornerRadius="8" Padding="10,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Projected month-end" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="ProjectionText" Text="0" FontWeight="SemiBold" />
+                                        <TextBlock Text="at the current pace" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="3" CornerRadius="8" Padding="10,8" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="Best day / daily avg" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                                        <TextBlock x:Name="BestDayText" Text="0" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="AvgDayText" Text="avg 0/day" FontSize="12" Opacity="0.8" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Spacing="6">
+                            <TextBlock x:Name="DailyListTitle" Text="Daily totals (last 30 days)" FontWeight="SemiBold" />
                             <!-- StackPanel (not ListView) inside outer ScrollViewer so outer page scrolls once and rows never snap to top -->
                             <StackPanel x:Name="HistoryPanel" Spacing="2" />
+                            <TextBlock Text="Weekly totals (last 12 weeks)" FontWeight="SemiBold" Margin="0,8,0,0" />
+                            <StackPanel x:Name="WeeklyPanel" Spacing="2" />
+                            <TextBlock Text="Monthly totals (last 12 months)" FontWeight="SemiBold" Margin="0,8,0,0" />
+                            <StackPanel x:Name="MonthlyPanel" Spacing="2" />
                             <TextBlock Text="Top app today (accumulated estimate):" FontWeight="SemiBold" Margin="0,8,0,0" />
                             <StackPanel x:Name="TopAppsPanel" Spacing="2" />
                         </StackPanel>
