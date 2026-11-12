@@ -103,7 +103,7 @@ public static class TaskbarHudPosition
     ///   bottom taskbar.)
     /// Settings offsets are DIPs, scaled to physical pixels by the window's DPI.
     /// </summary>
-    public static void Dock(AppWindow window, IntPtr hwnd, IntPtr topmostHwnd, string dock, int offsetX, int offsetY)
+    public static void Dock(AppWindow window, IntPtr hwnd, string dock, int offsetX, int offsetY)
     {
         var mon = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
         GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), ref mon);
@@ -111,7 +111,7 @@ public static class TaskbarHudPosition
         var work = mon.rcWork;
 
         var size = window.Size;
-        var dpi = topmostHwnd != IntPtr.Zero ? GetDpiForWindow(topmostHwnd) : 96;
+        var dpi = hwnd != IntPtr.Zero ? GetDpiForWindow(hwnd) : 96;
         var scale = dpi <= 0 ? 1.0 : dpi / 96.0;
         var ox = (int)Math.Round(offsetX * scale);
         var oy = (int)Math.Round(offsetY * scale);

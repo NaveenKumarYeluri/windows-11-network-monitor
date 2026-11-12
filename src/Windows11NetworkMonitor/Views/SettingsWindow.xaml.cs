@@ -10,12 +10,13 @@ public sealed partial class SettingsWindow : Window
     private readonly AppSettings _settings;
     private readonly IReadOnlyList<NetworkAdapterInfo> _adapters;
     private readonly SettingsService _store = new();
-    private readonly HistoryStore _history = new();
+    private readonly HistoryStore _history;
 
-    public SettingsWindow(AppSettings settings, IReadOnlyList<NetworkAdapterInfo> adapters)
+    public SettingsWindow(AppSettings settings, IReadOnlyList<NetworkAdapterInfo> adapters, HistoryStore history)
     {
         _settings = settings;
         _adapters = adapters;
+        _history = history;
         InitializeComponent();
         Title = "Settings";
         SetWindowIcon();
@@ -23,7 +24,6 @@ public sealed partial class SettingsWindow : Window
         // Settings dialog stays Light so controls remain readable regardless of Main dark/light choice
         ((FrameworkElement)Content).RequestedTheme = ElementTheme.Light;
         AppWindow.Resize(new SizeInt32(620, 640));
-        _history.Load();
         LoadValues();
     }
 
@@ -110,7 +110,6 @@ public sealed partial class SettingsWindow : Window
 
         _store.Save(_settings);
         _store.ApplyStartWithWindows(_settings.StartWithWindows);
-        _history.Load();
         _history.Prune(_settings.HistoryRetentionDays);
         // Keep Settings dialog Light — MainWindow picks up ThemeMode on its next tick
         StatusText.Text = "Saved. Adapter mode applies immediately; poll interval takes effect after restart.";
@@ -124,8 +123,8 @@ public sealed partial class SettingsWindow : Window
     {
         try
         {
-            // Reload from disk so the export always matches what's persisted.
-            _history.Load();
+            // Flush any current unwritten deltas to disk and export live rows.
+            _history.Save();
             var rows = _history.ExportRows();
             if (rows.Count == 0)
             {
@@ -172,6 +171,15 @@ public sealed partial class SettingsWindow : Window
 
     private static string CsvField(string value)
     {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+
+        // Prevent CSV Formula Injection (CWE-1236): prefix formula triggers with a single quote
+        var trimmed = value.TrimStart();
+        if (trimmed.Length > 0 && (trimmed[0] == '=' || trimmed[0] == '+' || trimmed[0] == '-' || trimmed[0] == '@' || trimmed[0] == '\t' || trimmed[0] == '\r'))
+        {
+            value = "'" + value;
+        }
+
         if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
             return $"\"{value.Replace("\"", "\"\"")}\"";
         return value;

@@ -30,28 +30,35 @@ public sealed class UpdateChecker
         await Task.CompletedTask;
         return null;
 #else
-        var current = CurrentVersion();
-        using var http = new HttpClient();
-        http.Timeout = TimeSpan.FromSeconds(10);
-        http.DefaultRequestHeaders.UserAgent.ParseAdd($"Windows11NetworkMonitor/{current.ToString(3)}");
+        try
+        {
+            var current = CurrentVersion();
+            using var http = new HttpClient();
+            http.Timeout = TimeSpan.FromSeconds(10);
+            http.DefaultRequestHeaders.UserAgent.ParseAdd($"Windows11NetworkMonitor/{current.ToString(3)}");
 
-        using var response = await http.GetAsync(
-            $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases/latest").ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode) return null;
+            using var response = await http.GetAsync(
+                $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases/latest").ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) return null;
 
-        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        using var doc = JsonDocument.Parse(json);
-        var root = doc.RootElement;
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
 
-        // Drafts and prereleases are not returned by this endpoint; only stable releases.
-        var tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
-        if (string.IsNullOrWhiteSpace(tag)) return null;
+            // Drafts and prereleases are not returned by this endpoint; only stable releases.
+            var tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
+            if (string.IsNullOrWhiteSpace(tag)) return null;
 
-        if (ParseTag(tag) is not { } remote || remote <= current) return null;
+            if (ParseTag(tag) is not { } remote || remote <= current) return null;
 
-        var url = root.TryGetProperty("html_url", out var u) && u.ValueKind == JsonValueKind.String
-            ? u.GetString() : null;
-        return new UpdateInfo(tag, string.IsNullOrWhiteSpace(url) ? ReleasesUrl : url);
+            var url = root.TryGetProperty("html_url", out var u) && u.ValueKind == JsonValueKind.String
+                ? u.GetString() : null;
+            return new UpdateInfo(tag, string.IsNullOrWhiteSpace(url) ? ReleasesUrl : url);
+        }
+        catch
+        {
+            return null;
+        }
 #endif
     }
 

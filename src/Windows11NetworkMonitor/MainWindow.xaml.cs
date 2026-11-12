@@ -1044,7 +1044,7 @@ public sealed partial class MainWindow : Window
     public void ShowSettings()
     {
         var adapters = _adapters.GetAdapters();
-        _settingsWin = new SettingsWindow(_settings, adapters);
+        _settingsWin = new SettingsWindow(_settings, adapters, _historyStore);
         _settingsWin.Closed += (_, _) => _settingsWin = null;
         _settingsWin.Activate();
         DispatcherQueue.TryEnqueue(() => _settingsWin.Activate());

@@ -137,6 +137,7 @@ public sealed class TrayIconService : IDisposable
     private readonly IntPtr[] _iconRing = new IntPtr[3];
     private int _iconRingIndex;
     private Icon? _baseIcon;   // REAL icon for the initial NIM_ADD - SystemIcons.Application.Handle is invalid in .NET 8 and poisons the registration
+    private IntPtr _baseIconDrawnHandle;
     private bool _added;
     private uint _taskbarCreatedMsg;
     public bool IsVisible => _added;
@@ -357,6 +358,7 @@ public sealed class TrayIconService : IDisposable
             {
                 var drawn = DrawIcon("--", "--");
                 _baseIcon = drawn; // keep alive; owned by us
+                _baseIconDrawnHandle = drawn.Handle;
                 return drawn.Handle;
             }
         }
@@ -428,6 +430,11 @@ public sealed class TrayIconService : IDisposable
         Hide();
         foreach (var h in _iconRing) if (h != IntPtr.Zero) DestroyIcon(h);
         Array.Clear(_iconRing);
+        if (_baseIconDrawnHandle != IntPtr.Zero)
+        {
+            DestroyIcon(_baseIconDrawnHandle);
+            _baseIconDrawnHandle = IntPtr.Zero;
+        }
         if (_baseIcon is not null) { _baseIcon.Dispose(); _baseIcon = null; }
     }
 }

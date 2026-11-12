@@ -13,9 +13,6 @@ namespace Windows11NetworkMonitor.Views;
 public sealed class HudWindow : Window
 {
     [DllImport("user32.dll")]
-    private static extern IntPtr FindWindow(string? lpClassName, string? lpWindowName);
-
-    [DllImport("user32.dll")]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
     [DllImport("user32.dll")]
@@ -107,20 +104,18 @@ public sealed class HudWindow : Window
     {
         try
         {
-            // Re-assert TOPMOST (WinUI's IsAlwaysOnTop alone drops when other apps activate)
-            var hwnd = FindWindow(null, "HUD");
-            if (hwnd != IntPtr.Zero)
+            var hwndSelf = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            if (hwndSelf != IntPtr.Zero)
             {
-                var ex = GetWindowLong(hwnd, GWL_EXSTYLE);
-                SetWindowLong(hwnd, GWL_EXSTYLE, ex | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+                var ex = GetWindowLong(hwndSelf, GWL_EXSTYLE);
+                SetWindowLong(hwndSelf, GWL_EXSTYLE, ex | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
                 // SWP_NOACTIVATE is essential: without it this periodic call could
                 // activate the HUD anyway and steal focus from whatever the user
                 // is doing (e.g. clicking "New" in Snipping Tool mid-snip).
-                SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                SetWindowPos(hwndSelf, HWND_TOPMOST, 0, 0, 0, 0,
                     SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
             }
-            var hwndSelf = WinRT.Interop.WindowNative.GetWindowHandle(this);
-            TaskbarHudPosition.Dock(AppWindow, hwndSelf, hwnd, _settings.HudDock, _settings.HudOffsetX, _settings.HudOffsetY);
+            TaskbarHudPosition.Dock(AppWindow, hwndSelf, _settings.HudDock, _settings.HudOffsetX, _settings.HudOffsetY);
             // Theme colors only need refresh when the resolved theme changes
             // (twice-per-second brush churn was pointless allocation).
             UpdateThemeColors();

@@ -16,10 +16,15 @@ public sealed class SpeedHistory
     private readonly object _sync = new();
 
     public IReadOnlyList<SpeedSample> Samples { get { lock (_sync) return _samples.ToArray(); } }
-    public double PeakDownloadBps { get; private set; }
-    public double PeakUploadBps { get; private set; }
-    public double AvgDownloadBps { get; private set; }
-    public double AvgUploadBps { get; private set; }
+    public double PeakDownloadBps { get { lock (_sync) return _peakDownloadBps; } }
+    public double PeakUploadBps { get { lock (_sync) return _peakUploadBps; } }
+    public double AvgDownloadBps { get { lock (_sync) return _avgDownloadBps; } }
+    public double AvgUploadBps { get { lock (_sync) return _avgUploadBps; } }
+
+    private double _peakDownloadBps;
+    private double _peakUploadBps;
+    private double _avgDownloadBps;
+    private double _avgUploadBps;
 
     public SpeedHistory(int capacity = 60) => _capacity = Math.Max(1, capacity);
 
@@ -30,12 +35,12 @@ public sealed class SpeedHistory
             _samples.Enqueue(sample);
             while (_samples.Count > _capacity) _samples.Dequeue();
 
-            PeakDownloadBps = Math.Max(PeakDownloadBps, sample.DownloadBps);
-            PeakUploadBps = Math.Max(PeakUploadBps, sample.UploadBps);
+            _peakDownloadBps = Math.Max(_peakDownloadBps, sample.DownloadBps);
+            _peakUploadBps = Math.Max(_peakUploadBps, sample.UploadBps);
             if (_samples.Count > 0)
             {
-                AvgDownloadBps = _samples.Average(s => s.DownloadBps);
-                AvgUploadBps = _samples.Average(s => s.UploadBps);
+                _avgDownloadBps = _samples.Average(s => s.DownloadBps);
+                _avgUploadBps = _samples.Average(s => s.UploadBps);
             }
         }
     }
@@ -44,8 +49,8 @@ public sealed class SpeedHistory
     {
         lock (_sync)
         {
-            PeakDownloadBps = 0;
-            PeakUploadBps = 0;
+            _peakDownloadBps = 0;
+            _peakUploadBps = 0;
         }
     }
 }

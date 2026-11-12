@@ -43,7 +43,11 @@ public sealed class SettingsService
         var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", writable: true);
         if (key is null) return;
         if (enable)
-            key.SetValue("Windows11NetworkMonitor", Environment.ProcessPath ?? string.Empty);
+        {
+            var exe = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(exe))
+                key.SetValue("Windows11NetworkMonitor", $"\"{exe}\"");
+        }
         else
             key.DeleteValue("Windows11NetworkMonitor", false);
     }

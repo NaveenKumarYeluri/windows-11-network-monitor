@@ -60,7 +60,11 @@ public sealed class PerAppTracker
             }
             else
             {
-                try { name = Process.GetProcessById(kv.Key).ProcessName; }
+                try
+                {
+                    using var proc = Process.GetProcessById(kv.Key);
+                    name = proc.ProcessName;
+                }
                 catch { name = kv.Key == 0 || kv.Key == 4 ? "System" : $"PID {kv.Key}"; }
                 _nameCache[kv.Key] = (name, nowTicks);
             }
@@ -99,9 +103,9 @@ public sealed class PerAppTracker
                 if (rc != 0) return;
                 int n = Marshal.ReadInt32(buf);
                 // MIB_TCPROW_OWNER_PID = 24 bytes (PID at +20)
-                // MIB_TCP6ROW_OWNER_PID = 52 bytes (PID at +48)
-                int stride = af == AF_INET6 ? 52 : 24;
-                int pidDelta = af == AF_INET6 ? 48 : 20;
+                // MIB_TCP6ROW_OWNER_PID = 56 bytes (PID at +52)
+                int stride = af == AF_INET6 ? 56 : 24;
+                int pidDelta = af == AF_INET6 ? 52 : 20;
                 for (int i = 0; i < n; i++)
                 {
                     long rowOff = 4L + i * stride;

@@ -55,8 +55,9 @@ public static class WifiService
                     {
                         var attr = Marshal.PtrToStructure<WLAN_CONNECTION_ATTRIBUTES>(dataPtr);
                         var assoc = attr.wlanAssociationAttributes;
-                        if (assoc.dot11Ssid.uSSIDLength == 0) return null; // visible handle, not connected
-                        return new WifiConnection(assoc.dot11Ssid.ucSSID, (int)assoc.wlanSignalQuality);
+                        var ssid = assoc.dot11Ssid.GetSsid();
+                        if (string.IsNullOrEmpty(ssid)) return null; // visible handle, not connected
+                        return new WifiConnection(ssid, (int)assoc.wlanSignalQuality);
                     }
                     finally
                     {
@@ -97,14 +98,21 @@ public static class WifiService
     [DllImport("wlanapi.dll")]
     private static extern void WlanFreeMemory(IntPtr pMemory);
 
-    // Matches wlanapi.h layouts for x64. SSID is max 32 chars + length field.
+    // Matches wlanapi.h layouts for x64.
     [StructLayout(LayoutKind.Sequential)]
     private struct DOT11_SSID
     {
         public uint uSSIDLength;
 
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string ucSSID;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+        public byte[] ucSSID;
+
+        public string GetSsid()
+        {
+            if (uSSIDLength == 0 || ucSSID is null) return string.Empty;
+            var len = (int)Math.Min(uSSIDLength, (uint)ucSSID.Length);
+            return System.Text.Encoding.UTF8.GetString(ucSSID, 0, len);
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -112,7 +120,11 @@ public static class WifiService
     {
         public DOT11_SSID dot11Ssid;
         public uint dot11BssType;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 6)]
+        public byte[] dot11Bssid;
+        public ushort _pad;
         public uint dot11PhyType;
+        public uint uDot11PhyIndex;
         public uint wlanSignalQuality; // 0-100
         public uint ulRxRate;
         public uint ulTxRate;
@@ -127,13 +139,13 @@ public static class WifiService
         public uint dot11CipherAlgorithm;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct WLAN_CONNECTION_ATTRIBUTES
     {
-        public uint InterfaceType;
-        public int isState;
+        public uint isState;
         public uint wlanConnectionMode;
-        public IntPtr strProfileName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string strProfileName;
         public WLAN_ASSOCIATION_ATTRIBUTES wlanAssociationAttributes;
         public WLAN_SECURITY_ATTRIBUTES wlanSecurityAttributes;
     }
