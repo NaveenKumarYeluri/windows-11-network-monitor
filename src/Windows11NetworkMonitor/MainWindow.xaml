@@ -7,7 +7,7 @@
     mc:Ignorable="d"
     Title="Windows 11 Network Monitor">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="220" />
             <ColumnDefinition Width="*" />
@@ -33,6 +33,28 @@
         <!-- Main content -->
         <ScrollViewer x:Name="MainScroll" Grid.Column="1" Margin="24" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="16" MaxWidth="900">
+
+                <!-- Status chips (at-a-glance connection state) -->
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Border CornerRadius="12" Padding="10,4"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="#6BB678" VerticalAlignment="Center" />
+                            <TextBlock x:Name="StatusChipText" Text="Starting..." FontSize="12" />
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="WifiChip" CornerRadius="12" Padding="10,4" Visibility="Collapsed"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <TextBlock x:Name="WifiChipText" Text="" FontSize="12" />
+                    </Border>
+                    <Border x:Name="PausedChip" CornerRadius="12" Padding="10,4" Visibility="Collapsed"
+                            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                        <TextBlock Text="Tracking paused" FontSize="12" />
+                    </Border>
+                </StackPanel>
 
                 <!-- Live speed cards -->
                 <Grid x:Name="DashboardSection" ColumnSpacing="16">

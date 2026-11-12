@@ -19,6 +19,7 @@ public sealed partial class SettingsWindow : Window
         InitializeComponent();
         Title = "Settings";
         SetWindowIcon();
+        SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
         // Settings dialog stays Light so controls remain readable regardless of Main dark/light choice
         ((FrameworkElement)Content).RequestedTheme = ElementTheme.Light;
         AppWindow.Resize(new SizeInt32(620, 640));

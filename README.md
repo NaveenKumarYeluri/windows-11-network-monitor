@@ -41,6 +41,7 @@ Windows 11 removed Deskband taskbar extensions, so there's no official way to in
 - [x] **Single instance** — launching the exe again focuses the running window instead of double-counting usage
 - [x] **Runs in the tray (background)** — closing the window **always** keeps the app monitoring in the background (one-time balloon the first time); restore works from the tray icon, the HUD, or a second launch (second-launch restore posts a message to the running instance — `FindWindow` cannot see WinUI windows). To really exit: tray right-click → *Exit*
 - [x] **CSV export** — Settings → *Export history to CSV* writes every stored day (device + per-app, bytes) to `%LOCALAPPDATA%\Windows11NetworkMonitor\exports\` and opens the folder
+- [x] **Fluent polish (v1.5.0)** — **Mica backdrop** on the main window and Settings (semi-transparent material cards now sit on real desktop material), a **status chip row** at the top of the dashboard (green-dot connection state, WiFi SSID · signal pill, `Tracking paused` pill when paused), and a subtle one-shot **fade-in** on launch
 - [x] **Theme** — System / Light / Dark (Main + HUD follow it; Settings stays Light for readability)
 - [x] Settings window (JSON in `%LOCALAPPDATA%\Windows11NetworkMonitor\settings.json`), start-with-Windows (`Run` key), adapter / poll-interval controls
 - [x] **Icon** — `NetworkMonitor.ico` + PNG/SVG (see Icon section)

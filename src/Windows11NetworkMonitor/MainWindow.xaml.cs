@@ -84,6 +84,9 @@ public sealed partial class MainWindow : Window
         Title = "Windows 11 Network Monitor";
         SetWindowIcon();
         ((FrameworkElement)Content).RequestedTheme = GetWantTheme();
+        // Fluent backdrop: Mica shows through the (now background-less) page and
+        // lets the semi-transparent cards sit on real desktop material.
+        SystemBackdrop = new MicaBackdrop();
         AppWindow.Resize(new SizeInt32(1180, 640));
         // Repaint the history bar chart when the dashboard reflows (window resize).
         ChartCanvas.SizeChanged += (_, _) => UpdateHistoryChart(force: true);
@@ -91,6 +94,27 @@ public sealed partial class MainWindow : Window
         _adapters.Changed += OnSpeedChanged;
         Closed += MainWindow_Closed;
         _ = LatencyLoopAsync();
+        FadeInOnce();
+    }
+
+    /// <summary>One-shot 300ms fade-in of the dashboard content (entrance polish).</summary>
+    private void FadeInOnce()
+    {
+        try
+        {
+            var fade = new Microsoft.UI.Xaml.Media.Animation.DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = new Duration(TimeSpan.FromMilliseconds(300))
+            };
+            var sb = new Microsoft.UI.Xaml.Media.Animation.Storyboard();
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTarget(fade, MainScroll);
+            Microsoft.UI.Xaml.Media.Animation.Storyboard.SetTargetProperty(fade, "Opacity");
+            sb.Children.Add(fade);
+            sb.Begin();
+        }
+        catch { }
     }
 
     public void InitTray()
@@ -293,14 +317,30 @@ public sealed partial class MainWindow : Window
             UpText.Text = SpeedFormatter.Format(up);
             AdapterText.Text = active is null ? "No active adapter" : $"{active.Name} ({(active.IsWiFi ? "WiFi" : active.IsEthernet ? "Ethernet" : "Other")})";
             LatencyText.Text = _latencyMs >= 0 ? $"Latency: {_latencyMs} ms" : "Latency: -- ms";
+            // Status chips: connection state + pause indicator.
+            if (active is not null)
+            {
+                StatusDot.Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x6B, 0xB6, 0x78));
+                StatusChipText.Text = $"Online · {(active.IsWiFi ? "WiFi" : active.IsEthernet ? "Ethernet" : active.Name)}";
+            }
+            else
+            {
+                StatusDot.Fill = new SolidColorBrush(Windows.UI.Color.FromArgb(0xFF, 0x88, 0x88, 0x88));
+                StatusChipText.Text = "No active adapter";
+            }
+            PausedChip.Visibility = paused ? Visibility.Visible : Visibility.Collapsed;
             if (_wifiConn is { } wifi && !string.IsNullOrEmpty(wifi.Ssid))
             {
-                WifiText.Text = $"WiFi: {wifi.Ssid} · {wifi.SignalQuality}%";
+                var wifiLabel = $"WiFi: {wifi.Ssid} · {wifi.SignalQuality}%";
+                WifiText.Text = wifiLabel;
                 WifiText.Visibility = Visibility.Visible;
+                WifiChipText.Text = wifiLabel;
+                WifiChip.Visibility = Visibility.Visible;
             }
             else
             {
                 WifiText.Visibility = Visibility.Collapsed;
+                WifiChip.Visibility = Visibility.Collapsed;
             }
             SessionText.Text = $"{SpeedFormatter.FormatBytes(_settings.SessionDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.SessionUploadBytes)}{(paused ? "  (paused)" : "")}";
             DailyText.Text = $"{SpeedFormatter.FormatBytes(_settings.DailyDownloadBytes)} / {SpeedFormatter.FormatBytes(_settings.DailyUploadBytes)}";

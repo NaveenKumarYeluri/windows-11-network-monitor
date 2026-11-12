@@ -1,6 +1,18 @@
 # Roadmap
 
 ## Shipped
+### v1.5.0 (via GitHub Releases — folder zip)
+- [x] Fluent polish (UI modernization phase 3):
+      Mica backdrop on the main window and the Settings window (page background
+      made transparent so the desktop material shows through the semi-transparent
+      cards; graceful no-op on pre-Win11)
+- [x] Status chip row at the top of the dashboard: connection-state pill with a
+      green/gray dot (Online - WiFi/Ethernet/adapter or No active adapter),
+      a WiFi SSID + signal pill when associated, and a "Tracking paused" pill
+      while tracking is paused
+- [x] One-shot 300 ms fade-in of the dashboard content on launch (entrance
+      animation without per-tick churn)
+
 ### v1.4.0 (via GitHub Releases — folder zip)
 - [x] Statistics & trends (UI modernization phase 2):
       history chart + daily-totals list now follow a 7 / 30 / 90-day range selector
@@ -126,8 +138,6 @@
 - [x] Initial feature freeze (see git history)
 
 ## Next
-- [ ] UI modernization phase 3 - Fluent polish (Mica/Acrylic backdrop, status
-      chip, refined dark palette, entrance animations)
 - [ ] Screenshots under `docs/screenshots/`
 - [ ] LiveChartsCore graph (zoom, tooltips, fill)
 - [ ] Native `GetIfTable2` path (64-bit counters, link speed)
