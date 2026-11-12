@@ -1,6 +1,17 @@
 # Roadmap
 
 ## Shipped
+### v1.5.1 (via GitHub Releases — folder zip)
+- [x] Security & interop hardening:
+      - Quoted executable path in Run registry key (CWE-428 mitigation)
+      - Sanitized CSV formula trigger characters in data export (CWE-1236 mitigation)
+      - Fixed native WiFi P/Invoke struct layouts (WLAN_CONNECTION_ATTRIBUTES, WLAN_ASSOCIATION_ATTRIBUTES, DOT11_SSID)
+      - Fixed IPv6 TCP table stride and PID offset alignment
+      - Released unmanaged OS process handles in PerAppTracker
+      - Removed desktop-wide FindWindow call and tied HUD to its own window handle with proper DPI scaling
+      - Synchronized HistoryStore across windows to preserve retention pruning
+      - Graceful error handling for update checks
+
 ### v1.5.0 (via GitHub Releases — folder zip)
 - [x] Fluent polish (UI modernization phase 3):
       Mica backdrop on the main window and the Settings window (page background
