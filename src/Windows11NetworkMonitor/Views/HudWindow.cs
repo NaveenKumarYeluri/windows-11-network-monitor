@@ -21,6 +21,33 @@ public sealed class HudWindow : Window
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO
+    {
+        public uint cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
     private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_TOPMOST = 0x00000008;
@@ -107,6 +134,26 @@ public sealed class HudWindow : Window
             var hwndSelf = WinRT.Interop.WindowNative.GetWindowHandle(this);
             if (hwndSelf != IntPtr.Zero)
             {
+                // Auto-hide the HUD if any foreground window is fullscreen on this monitor
+                var fg = GetForegroundWindow();
+                if (fg != IntPtr.Zero && fg != hwndSelf)
+                {
+                    var hMon = MonitorFromWindow(hwndSelf, 2 /* MONITOR_DEFAULTTONEAREST */);
+                    var mon = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
+                    if (GetMonitorInfo(hMon, ref mon) && GetWindowRect(fg, out var fgRect))
+                    {
+                        bool isFullscreen = fgRect.Left <= mon.rcMonitor.Left &&
+                                            fgRect.Top <= mon.rcMonitor.Top &&
+                                            fgRect.Right >= mon.rcMonitor.Right &&
+                                            fgRect.Bottom >= mon.rcMonitor.Bottom;
+                        if (isFullscreen)
+                        {
+                            ShowWindow(hwndSelf, 0 /* SW_HIDE */);
+                            return;
+                        }
+                    }
+                }
+
                 var ex = GetWindowLong(hwndSelf, GWL_EXSTYLE);
                 SetWindowLong(hwndSelf, GWL_EXSTYLE, ex | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
                 // SWP_NOACTIVATE is essential: without it this periodic call could
