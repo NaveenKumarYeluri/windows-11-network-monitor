@@ -172,9 +172,9 @@ public sealed class HudWindow : Window
 
             // 2. Set transparent composition brush as system backdrop
             var backdropHolder = this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>();
-            var compositor = Microsoft.UI.Xaml.Media.CompositionTarget.GetCompositorForCurrentThread();
-            if (backdropHolder != null && compositor != null)
+            if (backdropHolder != null)
             {
+                var compositor = new Windows.UI.Composition.Compositor();
                 var transparentBrush = compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
                 backdropHolder.SystemBackdrop = transparentBrush;
             }
