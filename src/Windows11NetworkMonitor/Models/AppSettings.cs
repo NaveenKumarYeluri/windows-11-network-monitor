@@ -70,7 +70,7 @@ public sealed partial class AppSettings : ObservableObject
     private string hudFontWeight = "Normal"; // Normal | SemiBold | Bold
 
     [ObservableProperty]
-    private string hudColorScheme = "Auto"; // Auto | Cyan | Green | Amber | Violet | White | Custom
+    private string hudColorScheme = "Auto"; // Auto | CleanWhite | FrostWhite | ArcticWhite | PearlLight | WhiteCard | White | Cyan | Green | Amber | Violet | Custom
 
     [ObservableProperty]
     private string hudTextColor = ""; // Hex (e.g. #FFFFFF) or empty for theme/auto

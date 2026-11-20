@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Media;
 using Windows.UI.Text;
 using Windows11NetworkMonitor.Models;
 using Windows11NetworkMonitor.Services;
+using WinRT;
 
 namespace Windows11NetworkMonitor.Views;
 
@@ -38,6 +39,30 @@ public sealed class HudWindow : Window
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern int GetDpiForWindow(IntPtr hwnd);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MARGINS
+    {
+        public int cxLeftWidth;
+        public int cxRightWidth;
+        public int cyTopHeight;
+        public int cyBottomHeight;
+    }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWCP_DEFAULT = 0;
+    private const int DWMWCP_DONOTROUND = 1;
+    private const int DWMWCP_ROUND = 2;
+    private const int DWMWCP_ROUNDSMALL = 3;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
@@ -72,12 +97,15 @@ public sealed class HudWindow : Window
     private double _lastDownBps;
     private double _lastUpBps;
     private bool _lastPaused;
+    private bool _transparencyConfigured;
 
     public HudWindow(MainWindow parent, AppSettings settings)
     {
         _parent = parent;
         _settings = settings;
         Title = "HUD";
+
+        ExtendsContentIntoTitleBar = true;
 
         _container = new Border
         {
@@ -116,19 +144,66 @@ public sealed class HudWindow : Window
             presenter.SetBorderAndTitleBar(false, false);
         }
 
+        EnsureWindowTransparency();
         ApplySettings();
 
         _repositionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _repositionTimer.Tick += (_, _) => Reposition();
         _repositionTimer.Start();
 
-        Activated += (_, _) => Reposition();
+        Activated += (_, _) =>
+        {
+            EnsureWindowTransparency();
+            Reposition();
+        };
+    }
+
+    private void EnsureWindowTransparency()
+    {
+        if (_transparencyConfigured) return;
+        try
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            if (hwnd == IntPtr.Zero) return;
+
+            // 1. Extend DWM frame into client area (-1 stretches across entire window)
+            var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
+            DwmExtendFrameIntoClientArea(hwnd, ref margins);
+
+            // 2. Set transparent composition brush as system backdrop
+            var backdropHolder = this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>();
+            var compositor = Microsoft.UI.Xaml.Media.CompositionTarget.GetCompositorForCurrentThread();
+            if (backdropHolder != null && compositor != null)
+            {
+                var transparentBrush = compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
+                backdropHolder.SystemBackdrop = transparentBrush;
+            }
+
+            _transparencyConfigured = true;
+        }
+        catch { }
+    }
+
+    private void UpdateCornerPreference(double radius)
+    {
+        try
+        {
+            var hwndSelf = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            if (hwndSelf != IntPtr.Zero)
+            {
+                int pref = radius <= 0.001 ? DWMWCP_DONOTROUND : (radius <= 4.0 ? DWMWCP_ROUNDSMALL : DWMWCP_ROUND);
+                DwmSetWindowAttribute(hwndSelf, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
+            }
+        }
+        catch { }
     }
 
     public void ApplySettings()
     {
         try
         {
+            EnsureWindowTransparency();
+
             // 1. Font Family & Size & Weight
             var fontName = string.IsNullOrWhiteSpace(_settings.HudFontFamily) ? "Segoe UI" : _settings.HudFontFamily.Trim();
             _speedText.FontFamily = new FontFamily(fontName);
@@ -141,16 +216,25 @@ public sealed class HudWindow : Window
                 _ => FontWeights.Normal
             };
 
-            // 2. Corner radius & Border
-            _container.CornerRadius = new CornerRadius(Math.Clamp(_settings.HudCornerRadius, 0.0, 20.0));
+            // 2. Corner radius & Border & DWM corner preference
+            var cr = Math.Clamp(_settings.HudCornerRadius, 0.0, 20.0);
+            _container.CornerRadius = new CornerRadius(cr);
+            UpdateCornerPreference(cr);
 
-            // 3. Dynamic Window Resizing
+            // 3. Dynamic Window Resizing (DPI-scaled physical pixels)
+            var hwndSelf = WinRT.Interop.WindowNative.GetWindowHandle(this);
+            var dpi = hwndSelf != IntPtr.Zero ? GetDpiForWindow(hwndSelf) : 96;
+            var scale = dpi <= 0 ? 1.0 : dpi / 96.0;
+
             int baseWidth = _settings.HudCompact ? 115 : 158;
-            int targetWidth = (int)Math.Max(110, Math.Round(baseWidth * (fs / 11.0)));
-            int targetHeight = (int)Math.Max(26, Math.Round(28 * (fs / 11.0)));
-            AppWindow.Resize(new Windows.Graphics.SizeInt32(targetWidth, targetHeight));
+            int targetWidthDip = (int)Math.Max(110, Math.Round(baseWidth * (fs / 11.0)));
+            int targetHeightDip = (int)Math.Max(26, Math.Round(28 * (fs / 11.0)));
 
-            // 4. Update Colors
+            int physicalWidth = (int)Math.Round(targetWidthDip * scale);
+            int physicalHeight = (int)Math.Round(targetHeightDip * scale);
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(physicalWidth, physicalHeight));
+
+            // 4. Update Colors (force refresh)
             UpdateThemeColors(force: true);
 
             // 5. Update Speed Text Format immediately
@@ -183,7 +267,7 @@ public sealed class HudWindow : Window
         };
 
         var scheme = (_settings.HudColorScheme ?? "Auto").Trim();
-        var key = $"{mode}:{resolved}:{scheme}:{_settings.HudTextColor}:{_settings.HudDownColor}:{_settings.HudUpColor}:{_settings.HudBgColor}:{_settings.HudBgOpacity}:{_settings.HudShowBorder}:{_settings.HudBorderColor}";
+        var key = $"{mode}:{resolved}:{scheme}:{_settings.HudTextColor}:{_settings.HudDownColor}:{_settings.HudUpColor}:{_settings.HudBgColor}:{_settings.HudBgOpacity}:{_settings.HudCornerRadius}:{_settings.HudShowBorder}:{_settings.HudBorderColor}";
         if (!force && key == _lastThemeKey) return;
         _lastThemeKey = key;
 
@@ -211,6 +295,41 @@ public sealed class HudWindow : Window
         {
             switch (scheme.ToLowerInvariant())
             {
+                case "cleanwhite":
+                    textColor = AppColorHelper.ParseColor("#1E293B", Colors.Black);
+                    downColor = AppColorHelper.ParseColor("#0284C7", Colors.Blue);
+                    upColor = AppColorHelper.ParseColor("#16A34A", Colors.Green);
+                    bgColor = Colors.White;
+                    if (_settings.HudBgOpacity == 0.75) opacity = 0.85;
+                    break;
+                case "frostwhite":
+                    textColor = AppColorHelper.ParseColor("#0F172A", Colors.Black);
+                    downColor = AppColorHelper.ParseColor("#0284C7", Colors.Blue);
+                    upColor = AppColorHelper.ParseColor("#0D9488", Colors.Teal);
+                    bgColor = AppColorHelper.ParseColor("#F8FAFC", Colors.White);
+                    if (_settings.HudBgOpacity == 0.75) opacity = 0.70;
+                    break;
+                case "arcticwhite":
+                    textColor = AppColorHelper.ParseColor("#334155", Colors.Black);
+                    downColor = AppColorHelper.ParseColor("#2563EB", Colors.Blue);
+                    upColor = AppColorHelper.ParseColor("#7C3AED", Colors.Purple);
+                    bgColor = Colors.White;
+                    if (_settings.HudBgOpacity == 0.75) opacity = 0.90;
+                    break;
+                case "pearllight":
+                    textColor = AppColorHelper.ParseColor("#27272A", Colors.Black);
+                    downColor = AppColorHelper.ParseColor("#0EA5E9", Colors.Blue);
+                    upColor = AppColorHelper.ParseColor("#10B981", Colors.Green);
+                    bgColor = AppColorHelper.ParseColor("#F4F4F5", Colors.White);
+                    if (_settings.HudBgOpacity == 0.75) opacity = 0.80;
+                    break;
+                case "whitecard":
+                    textColor = AppColorHelper.ParseColor("#111827", Colors.Black);
+                    downColor = AppColorHelper.ParseColor("#059669", Colors.Green);
+                    upColor = AppColorHelper.ParseColor("#D97706", Colors.Orange);
+                    bgColor = Colors.White;
+                    if (_settings.HudBgOpacity == 0.75) opacity = 0.95;
+                    break;
                 case "cyan":
                 case "cyberpunk cyan":
                     textColor = AppColorHelper.ParseColor("#00E5FF", Colors.Cyan);
@@ -256,14 +375,15 @@ public sealed class HudWindow : Window
             }
         }
 
-        // Apply background
-        if (opacity <= 0.001)
+        // Apply background with true alpha
+        var bgAlpha = (byte)Math.Clamp((int)Math.Round(opacity * 255), 0, 255);
+        if (bgAlpha == 0)
         {
             _container.Background = new SolidColorBrush(Colors.Transparent);
         }
         else
         {
-            _container.Background = new SolidColorBrush(bgColor) { Opacity = opacity };
+            _container.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(bgAlpha, bgColor.R, bgColor.G, bgColor.B));
         }
 
         // Apply text brushes
@@ -275,7 +395,14 @@ public sealed class HudWindow : Window
         // Apply border
         if (_settings.HudShowBorder)
         {
-            var fallbackBorder = isDark ? Windows.UI.Color.FromArgb(80, 255, 255, 255) : Windows.UI.Color.FromArgb(80, 0, 0, 0);
+            bool isWhiteTheme = scheme.ToLowerInvariant() switch
+            {
+                "cleanwhite" or "frostwhite" or "arcticwhite" or "pearllight" or "whitecard" => true,
+                _ => !isDark
+            };
+            var fallbackBorder = isWhiteTheme
+                ? Windows.UI.Color.FromArgb(160, 203, 213, 225)
+                : (isDark ? Windows.UI.Color.FromArgb(80, 255, 255, 255) : Windows.UI.Color.FromArgb(80, 0, 0, 0));
             _container.BorderBrush = new SolidColorBrush(AppColorHelper.ParseColor(_settings.HudBorderColor, fallbackBorder));
             _container.BorderThickness = new Thickness(1);
         }
@@ -290,6 +417,7 @@ public sealed class HudWindow : Window
     {
         try
         {
+            EnsureWindowTransparency();
             var hwndSelf = WinRT.Interop.WindowNative.GetWindowHandle(this);
             if (hwndSelf != IntPtr.Zero)
             {
@@ -315,9 +443,6 @@ public sealed class HudWindow : Window
 
                 var ex = GetWindowLong(hwndSelf, GWL_EXSTYLE);
                 SetWindowLong(hwndSelf, GWL_EXSTYLE, ex | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
-                // SWP_NOACTIVATE is essential: without it this periodic call could
-                // activate the HUD anyway and steal focus from whatever the user
-                // is doing (e.g. clicking "New" in Snipping Tool mid-snip).
                 SetWindowPos(hwndSelf, HWND_TOPMOST, 0, 0, 0, 0,
                     SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
             }

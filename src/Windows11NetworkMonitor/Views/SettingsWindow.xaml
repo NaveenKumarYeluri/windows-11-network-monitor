@@ -79,11 +79,16 @@
                     <TextBlock Text="HUD Colors &amp; Style" FontWeight="SemiBold" />
                     <ComboBox x:Name="HudColorSchemeCombo" Header="Color Scheme Preset" MinWidth="280" HorizontalAlignment="Stretch">
                         <ComboBoxItem Content="Auto (Follows Theme / System)" Tag="Auto" />
+                        <ComboBoxItem Content="Clean White (Light / White Surface)" Tag="CleanWhite" />
+                        <ComboBoxItem Content="Frost Glass (Translucent White)" Tag="FrostWhite" />
+                        <ComboBoxItem Content="Arctic Minimal (White &amp; Blue)" Tag="ArcticWhite" />
+                        <ComboBoxItem Content="Pearl (Soft Light / Zinc)" Tag="PearlLight" />
+                        <ComboBoxItem Content="White Card (Crisp White on Dark)" Tag="WhiteCard" />
+                        <ComboBoxItem Content="Pure White Text (Dark Background)" Tag="White" />
                         <ComboBoxItem Content="Cyberpunk Cyan (#00E5FF)" Tag="Cyan" />
                         <ComboBoxItem Content="Matrix Green (#00FF66)" Tag="Green" />
                         <ComboBoxItem Content="Neon Amber (#FFB300)" Tag="Amber" />
                         <ComboBoxItem Content="Electric Violet (#C084FC)" Tag="Violet" />
-                        <ComboBoxItem Content="Pure White (#FFFFFF)" Tag="White" />
                         <ComboBoxItem Content="Custom" Tag="Custom" />
                     </ComboBox>
 

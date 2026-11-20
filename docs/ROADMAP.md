@@ -3,10 +3,10 @@
 ## Shipped
 ### v1.6.0 (via GitHub Releases — folder zip)
 - [x] HUD Customizations (Appearance & Placement):
-      - Custom typography: font family selection (Segoe UI, Segoe UI Variable, Cascadia Code, Consolas, Bahnschrift, Arial, Calibri, Lucida Console, or custom), font size (8–24 pt), and font weight (Normal, SemiBold, Bold)
-      - Dynamic window sizing based on font size and format to ensure zero clipping
+      - Custom typography: expanded font family selection with 25+ system and monospace fonts (Segoe UI, Segoe UI Variable, Cascadia Code, Cascadia Mono, Consolas, Bahnschrift, Arial, Calibri, Verdana, Tahoma, Century Gothic, JetBrains Mono, Fira Code, or custom), font size (8–24 pt), and font weight (Normal, SemiBold, Bold)
+      - Dynamic window sizing based on font size, DPI scaling, and format to ensure zero clipping
       - Expanded dock placement options: Bottom (Taskbar near tray clock), Bottom-Left, Bottom-Center, Top (Screen top center), Top-Left, Top-Right, Left, Right + horizontal and vertical offset fine-tuning (±1000 DIPs)
-      - Color schemes & presets: Auto (Follows Theme/System), Cyberpunk Cyan, Matrix Green, Neon Amber, Electric Violet, Pure White, and Custom
+      - Color schemes & presets: Auto (Follows Theme/System), Clean White (Light Surface), Frost Glass (Translucent White), Arctic Minimal (White & Blue), Pearl (Zinc Light), White Card (Crisp White on Dark), Pure White Text, Cyberpunk Cyan, Matrix Green, Neon Amber, Electric Violet, and Custom
       - Independent download/upload speed colors, text color, and background color customization (hex codes)
       - Background opacity control (0% transparent floating text to 100% solid)
       - Corner radius adjustment (sharp 0px to smooth pill 20px) and subtle border styling

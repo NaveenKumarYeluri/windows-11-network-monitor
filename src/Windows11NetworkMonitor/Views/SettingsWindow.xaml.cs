@@ -101,9 +101,45 @@ public sealed partial class SettingsWindow : Window
 
         // HUD Font
         HudFontFamilyCombo.Items.Clear();
-        var fonts = new[] { "Segoe UI", "Segoe UI Variable Text", "Cascadia Code", "Consolas", "Bahnschrift", "Arial", "Calibri", "Lucida Console" };
+        var fonts = new[]
+        {
+            "Segoe UI",
+            "Segoe UI Variable Text",
+            "Segoe UI Variable Display",
+            "Segoe UI Variable Small",
+            "Segoe UI Semibold",
+            "Segoe UI Light",
+            "Cascadia Code",
+            "Cascadia Mono",
+            "Consolas",
+            "Bahnschrift",
+            "Bahnschrift SemiCondensed",
+            "Bahnschrift Condensed",
+            "Arial",
+            "Calibri",
+            "Verdana",
+            "Tahoma",
+            "Trebuchet MS",
+            "Century Gothic",
+            "Corbel",
+            "Candara",
+            "Franklin Gothic Medium",
+            "Lucida Console",
+            "Courier New",
+            "JetBrains Mono",
+            "Fira Code"
+        };
         foreach (var f in fonts) HudFontFamilyCombo.Items.Add(f);
-        HudFontFamilyCombo.Text = string.IsNullOrWhiteSpace(_settings.HudFontFamily) ? "Segoe UI" : _settings.HudFontFamily;
+        var wantedFont = string.IsNullOrWhiteSpace(_settings.HudFontFamily) ? "Segoe UI" : _settings.HudFontFamily.Trim();
+        HudFontFamilyCombo.Text = wantedFont;
+        for (int i = 0; i < HudFontFamilyCombo.Items.Count; i++)
+        {
+            if (string.Equals(HudFontFamilyCombo.Items[i]?.ToString(), wantedFont, StringComparison.OrdinalIgnoreCase))
+            {
+                HudFontFamilyCombo.SelectedIndex = i;
+                break;
+            }
+        }
 
         HudFontSizeBox.Value = Math.Clamp(_settings.HudFontSize, 8, 24);
         HudFontWeightCombo.SelectedIndex = (_settings.HudFontWeight ?? "Normal").Trim().ToLowerInvariant() switch
@@ -114,16 +150,18 @@ public sealed partial class SettingsWindow : Window
         };
 
         // HUD Colors
-        HudColorSchemeCombo.SelectedIndex = (_settings.HudColorScheme ?? "Auto").Trim().ToLowerInvariant() switch
+        var wantedScheme = (_settings.HudColorScheme ?? "Auto").Trim();
+        int selectedSchemeIdx = 0;
+        for (int i = 0; i < HudColorSchemeCombo.Items.Count; i++)
         {
-            "cyan" or "cyberpunk cyan" => 1,
-            "green" or "matrix green" => 2,
-            "amber" or "neon amber" => 3,
-            "violet" or "electric violet" => 4,
-            "white" or "pure white" => 5,
-            "custom" => 6,
-            _ => 0
-        };
+            if (HudColorSchemeCombo.Items[i] is ComboBoxItem item &&
+                string.Equals(item.Tag?.ToString(), wantedScheme, StringComparison.OrdinalIgnoreCase))
+            {
+                selectedSchemeIdx = i;
+                break;
+            }
+        }
+        HudColorSchemeCombo.SelectedIndex = selectedSchemeIdx;
 
         HudTextColorBox.Text = _settings.HudTextColor ?? string.Empty;
         HudDownColorBox.Text = _settings.HudDownColor ?? string.Empty;
@@ -160,6 +198,46 @@ public sealed partial class SettingsWindow : Window
                 var tag = (HudColorSchemeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString();
                 switch (tag?.ToLowerInvariant())
                 {
+                    case "cleanwhite":
+                        HudTextColorBox.Text = "#1E293B";
+                        HudDownColorBox.Text = "#0284C7";
+                        HudUpColorBox.Text = "#16A34A";
+                        HudBgColorBox.Text = "#FFFFFF";
+                        HudBgOpacityBox.Value = 85;
+                        HudShowBorderCheck.IsChecked = true;
+                        break;
+                    case "frostwhite":
+                        HudTextColorBox.Text = "#0F172A";
+                        HudDownColorBox.Text = "#0284C7";
+                        HudUpColorBox.Text = "#0D9488";
+                        HudBgColorBox.Text = "#F8FAFC";
+                        HudBgOpacityBox.Value = 70;
+                        HudShowBorderCheck.IsChecked = true;
+                        break;
+                    case "arcticwhite":
+                        HudTextColorBox.Text = "#334155";
+                        HudDownColorBox.Text = "#2563EB";
+                        HudUpColorBox.Text = "#7C3AED";
+                        HudBgColorBox.Text = "#FFFFFF";
+                        HudBgOpacityBox.Value = 90;
+                        HudShowBorderCheck.IsChecked = true;
+                        break;
+                    case "pearllight":
+                        HudTextColorBox.Text = "#27272A";
+                        HudDownColorBox.Text = "#0EA5E9";
+                        HudUpColorBox.Text = "#10B981";
+                        HudBgColorBox.Text = "#F4F4F5";
+                        HudBgOpacityBox.Value = 80;
+                        HudShowBorderCheck.IsChecked = true;
+                        break;
+                    case "whitecard":
+                        HudTextColorBox.Text = "#111827";
+                        HudDownColorBox.Text = "#059669";
+                        HudUpColorBox.Text = "#D97706";
+                        HudBgColorBox.Text = "#FFFFFF";
+                        HudBgOpacityBox.Value = 95;
+                        HudShowBorderCheck.IsChecked = true;
+                        break;
                     case "cyan":
                         HudTextColorBox.Text = "#00E5FF";
                         HudDownColorBox.Text = "#38BDF8";
@@ -275,6 +353,36 @@ public sealed partial class SettingsWindow : Window
             {
                 switch (scheme.ToLowerInvariant())
                 {
+                    case "cleanwhite":
+                        textCol = AppColorHelper.ParseColor("#1E293B", Colors.Black);
+                        downCol = AppColorHelper.ParseColor("#0284C7", Colors.Blue);
+                        upCol = AppColorHelper.ParseColor("#16A34A", Colors.Green);
+                        bgCol = Colors.White;
+                        break;
+                    case "frostwhite":
+                        textCol = AppColorHelper.ParseColor("#0F172A", Colors.Black);
+                        downCol = AppColorHelper.ParseColor("#0284C7", Colors.Blue);
+                        upCol = AppColorHelper.ParseColor("#0D9488", Colors.Teal);
+                        bgCol = AppColorHelper.ParseColor("#F8FAFC", Colors.White);
+                        break;
+                    case "arcticwhite":
+                        textCol = AppColorHelper.ParseColor("#334155", Colors.Black);
+                        downCol = AppColorHelper.ParseColor("#2563EB", Colors.Blue);
+                        upCol = AppColorHelper.ParseColor("#7C3AED", Colors.Purple);
+                        bgCol = Colors.White;
+                        break;
+                    case "pearllight":
+                        textCol = AppColorHelper.ParseColor("#27272A", Colors.Black);
+                        downCol = AppColorHelper.ParseColor("#0EA5E9", Colors.Blue);
+                        upCol = AppColorHelper.ParseColor("#10B981", Colors.Green);
+                        bgCol = AppColorHelper.ParseColor("#F4F4F5", Colors.White);
+                        break;
+                    case "whitecard":
+                        textCol = AppColorHelper.ParseColor("#111827", Colors.Black);
+                        downCol = AppColorHelper.ParseColor("#059669", Colors.Green);
+                        upCol = AppColorHelper.ParseColor("#D97706", Colors.Orange);
+                        bgCol = Colors.White;
+                        break;
                     case "cyan":
                         textCol = AppColorHelper.ParseColor("#00E5FF", Colors.Cyan);
                         downCol = AppColorHelper.ParseColor("#38BDF8", Colors.Cyan);
@@ -314,13 +422,14 @@ public sealed partial class SettingsWindow : Window
                 }
             }
 
-            if (opacity <= 0.001)
+            var previewAlpha = (byte)Math.Clamp((int)Math.Round(opacity * 255), 0, 255);
+            if (previewAlpha == 0)
             {
                 HudPreviewBorder.Background = new SolidColorBrush(Colors.Transparent);
             }
             else
             {
-                HudPreviewBorder.Background = new SolidColorBrush(bgCol) { Opacity = opacity };
+                HudPreviewBorder.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(previewAlpha, bgCol.R, bgCol.G, bgCol.B));
             }
 
             _previewDownRun.Foreground = new SolidColorBrush(downCol);
@@ -332,7 +441,15 @@ public sealed partial class SettingsWindow : Window
 
             if (HudShowBorderCheck.IsChecked == true)
             {
-                HudPreviewBorder.BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(90, 255, 255, 255));
+                bool isWhiteTheme = scheme.ToLowerInvariant() switch
+                {
+                    "cleanwhite" or "frostwhite" or "arcticwhite" or "pearllight" or "whitecard" => true,
+                    _ => false
+                };
+                var borderCol = isWhiteTheme
+                    ? Windows.UI.Color.FromArgb(160, 203, 213, 225)
+                    : Windows.UI.Color.FromArgb(90, 255, 255, 255);
+                HudPreviewBorder.BorderBrush = new SolidColorBrush(borderCol);
                 HudPreviewBorder.BorderThickness = new Thickness(1);
             }
             else
