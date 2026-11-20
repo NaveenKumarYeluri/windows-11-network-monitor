@@ -253,7 +253,7 @@ public sealed partial class SettingsWindow : Window
 
             var scheme = (HudColorSchemeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Auto";
             var defaultText = Colors.White;
-            var defaultBg = ColorHelper.ParseColor("#0F172A", Colors.Black);
+            var defaultBg = AppColorHelper.ParseColor("#0F172A", Colors.Black);
 
             Windows.UI.Color textCol;
             Windows.UI.Color downCol;
@@ -266,43 +266,43 @@ public sealed partial class SettingsWindow : Window
                 !string.IsNullOrWhiteSpace(HudUpColorBox.Text) ||
                 !string.IsNullOrWhiteSpace(HudBgColorBox.Text))
             {
-                textCol = ColorHelper.ParseColor(HudTextColorBox.Text, defaultText);
-                downCol = string.IsNullOrWhiteSpace(HudDownColorBox.Text) ? textCol : ColorHelper.ParseColor(HudDownColorBox.Text, textCol);
-                upCol = string.IsNullOrWhiteSpace(HudUpColorBox.Text) ? textCol : ColorHelper.ParseColor(HudUpColorBox.Text, textCol);
-                bgCol = string.IsNullOrWhiteSpace(HudBgColorBox.Text) ? defaultBg : ColorHelper.ParseColor(HudBgColorBox.Text, defaultBg);
+                textCol = AppColorHelper.ParseColor(HudTextColorBox.Text, defaultText);
+                downCol = string.IsNullOrWhiteSpace(HudDownColorBox.Text) ? textCol : AppColorHelper.ParseColor(HudDownColorBox.Text, textCol);
+                upCol = string.IsNullOrWhiteSpace(HudUpColorBox.Text) ? textCol : AppColorHelper.ParseColor(HudUpColorBox.Text, textCol);
+                bgCol = string.IsNullOrWhiteSpace(HudBgColorBox.Text) ? defaultBg : AppColorHelper.ParseColor(HudBgColorBox.Text, defaultBg);
             }
             else
             {
                 switch (scheme.ToLowerInvariant())
                 {
                     case "cyan":
-                        textCol = ColorHelper.ParseColor("#00E5FF", Colors.Cyan);
-                        downCol = ColorHelper.ParseColor("#38BDF8", Colors.Cyan);
-                        upCol = ColorHelper.ParseColor("#00E5FF", Colors.Cyan);
-                        bgCol = ColorHelper.ParseColor("#0F172A", Colors.Black);
+                        textCol = AppColorHelper.ParseColor("#00E5FF", Colors.Cyan);
+                        downCol = AppColorHelper.ParseColor("#38BDF8", Colors.Cyan);
+                        upCol = AppColorHelper.ParseColor("#00E5FF", Colors.Cyan);
+                        bgCol = AppColorHelper.ParseColor("#0F172A", Colors.Black);
                         break;
                     case "green":
-                        textCol = ColorHelper.ParseColor("#00FF66", Colors.Green);
-                        downCol = ColorHelper.ParseColor("#4ADE80", Colors.Green);
-                        upCol = ColorHelper.ParseColor("#00FF66", Colors.Green);
-                        bgCol = ColorHelper.ParseColor("#0A0F0D", Colors.Black);
+                        textCol = AppColorHelper.ParseColor("#00FF66", Colors.Green);
+                        downCol = AppColorHelper.ParseColor("#4ADE80", Colors.Green);
+                        upCol = AppColorHelper.ParseColor("#00FF66", Colors.Green);
+                        bgCol = AppColorHelper.ParseColor("#0A0F0D", Colors.Black);
                         break;
                     case "amber":
-                        textCol = ColorHelper.ParseColor("#FFB300", Colors.Orange);
-                        downCol = ColorHelper.ParseColor("#FCD34D", Colors.Orange);
-                        upCol = ColorHelper.ParseColor("#F59E0B", Colors.Orange);
-                        bgCol = ColorHelper.ParseColor("#1C1917", Colors.Black);
+                        textCol = AppColorHelper.ParseColor("#FFB300", Colors.Orange);
+                        downCol = AppColorHelper.ParseColor("#FCD34D", Colors.Orange);
+                        upCol = AppColorHelper.ParseColor("#F59E0B", Colors.Orange);
+                        bgCol = AppColorHelper.ParseColor("#1C1917", Colors.Black);
                         break;
                     case "violet":
-                        textCol = ColorHelper.ParseColor("#C084FC", Colors.Purple);
-                        downCol = ColorHelper.ParseColor("#A855F7", Colors.Purple);
-                        upCol = ColorHelper.ParseColor("#E879F9", Colors.Purple);
-                        bgCol = ColorHelper.ParseColor("#18181B", Colors.Black);
+                        textCol = AppColorHelper.ParseColor("#C084FC", Colors.Purple);
+                        downCol = AppColorHelper.ParseColor("#A855F7", Colors.Purple);
+                        upCol = AppColorHelper.ParseColor("#E879F9", Colors.Purple);
+                        bgCol = AppColorHelper.ParseColor("#18181B", Colors.Black);
                         break;
                     case "white":
                         textCol = Colors.White;
                         downCol = Colors.White;
-                        upCol = ColorHelper.ParseColor("#E2E8F0", Colors.White);
+                        upCol = AppColorHelper.ParseColor("#E2E8F0", Colors.White);
                         bgCol = Colors.Black;
                         break;
                     default: // Auto

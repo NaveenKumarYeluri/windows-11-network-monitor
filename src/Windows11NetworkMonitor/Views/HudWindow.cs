@@ -202,10 +202,10 @@ public sealed class HudWindow : Window
             !string.IsNullOrWhiteSpace(_settings.HudUpColor) ||
             !string.IsNullOrWhiteSpace(_settings.HudBgColor))
         {
-            textColor = ColorHelper.ParseColor(_settings.HudTextColor, defaultText);
-            downColor = string.IsNullOrWhiteSpace(_settings.HudDownColor) ? textColor : ColorHelper.ParseColor(_settings.HudDownColor, textColor);
-            upColor = string.IsNullOrWhiteSpace(_settings.HudUpColor) ? textColor : ColorHelper.ParseColor(_settings.HudUpColor, textColor);
-            bgColor = string.IsNullOrWhiteSpace(_settings.HudBgColor) ? defaultBg : ColorHelper.ParseColor(_settings.HudBgColor, defaultBg);
+            textColor = AppColorHelper.ParseColor(_settings.HudTextColor, defaultText);
+            downColor = string.IsNullOrWhiteSpace(_settings.HudDownColor) ? textColor : AppColorHelper.ParseColor(_settings.HudDownColor, textColor);
+            upColor = string.IsNullOrWhiteSpace(_settings.HudUpColor) ? textColor : AppColorHelper.ParseColor(_settings.HudUpColor, textColor);
+            bgColor = string.IsNullOrWhiteSpace(_settings.HudBgColor) ? defaultBg : AppColorHelper.ParseColor(_settings.HudBgColor, defaultBg);
         }
         else
         {
@@ -213,37 +213,37 @@ public sealed class HudWindow : Window
             {
                 case "cyan":
                 case "cyberpunk cyan":
-                    textColor = ColorHelper.ParseColor("#00E5FF", Colors.Cyan);
-                    downColor = ColorHelper.ParseColor("#38BDF8", Colors.Cyan);
-                    upColor = ColorHelper.ParseColor("#00E5FF", Colors.Cyan);
-                    bgColor = ColorHelper.ParseColor("#0F172A", Colors.Black);
+                    textColor = AppColorHelper.ParseColor("#00E5FF", Colors.Cyan);
+                    downColor = AppColorHelper.ParseColor("#38BDF8", Colors.Cyan);
+                    upColor = AppColorHelper.ParseColor("#00E5FF", Colors.Cyan);
+                    bgColor = AppColorHelper.ParseColor("#0F172A", Colors.Black);
                     break;
                 case "green":
                 case "matrix green":
-                    textColor = ColorHelper.ParseColor("#00FF66", Colors.Green);
-                    downColor = ColorHelper.ParseColor("#4ADE80", Colors.Green);
-                    upColor = ColorHelper.ParseColor("#00FF66", Colors.Green);
-                    bgColor = ColorHelper.ParseColor("#0A0F0D", Colors.Black);
+                    textColor = AppColorHelper.ParseColor("#00FF66", Colors.Green);
+                    downColor = AppColorHelper.ParseColor("#4ADE80", Colors.Green);
+                    upColor = AppColorHelper.ParseColor("#00FF66", Colors.Green);
+                    bgColor = AppColorHelper.ParseColor("#0A0F0D", Colors.Black);
                     break;
                 case "amber":
                 case "neon amber":
-                    textColor = ColorHelper.ParseColor("#FFB300", Colors.Orange);
-                    downColor = ColorHelper.ParseColor("#FCD34D", Colors.Orange);
-                    upColor = ColorHelper.ParseColor("#F59E0B", Colors.Orange);
-                    bgColor = ColorHelper.ParseColor("#1C1917", Colors.Black);
+                    textColor = AppColorHelper.ParseColor("#FFB300", Colors.Orange);
+                    downColor = AppColorHelper.ParseColor("#FCD34D", Colors.Orange);
+                    upColor = AppColorHelper.ParseColor("#F59E0B", Colors.Orange);
+                    bgColor = AppColorHelper.ParseColor("#1C1917", Colors.Black);
                     break;
                 case "violet":
                 case "electric violet":
-                    textColor = ColorHelper.ParseColor("#C084FC", Colors.Purple);
-                    downColor = ColorHelper.ParseColor("#A855F7", Colors.Purple);
-                    upColor = ColorHelper.ParseColor("#E879F9", Colors.Purple);
-                    bgColor = ColorHelper.ParseColor("#18181B", Colors.Black);
+                    textColor = AppColorHelper.ParseColor("#C084FC", Colors.Purple);
+                    downColor = AppColorHelper.ParseColor("#A855F7", Colors.Purple);
+                    upColor = AppColorHelper.ParseColor("#E879F9", Colors.Purple);
+                    bgColor = AppColorHelper.ParseColor("#18181B", Colors.Black);
                     break;
                 case "white":
                 case "pure white":
                     textColor = Colors.White;
                     downColor = Colors.White;
-                    upColor = ColorHelper.ParseColor("#E2E8F0", Colors.White);
+                    upColor = AppColorHelper.ParseColor("#E2E8F0", Colors.White);
                     bgColor = Colors.Black;
                     break;
                 default: // Auto
@@ -276,7 +276,7 @@ public sealed class HudWindow : Window
         if (_settings.HudShowBorder)
         {
             var fallbackBorder = isDark ? Windows.UI.Color.FromArgb(80, 255, 255, 255) : Windows.UI.Color.FromArgb(80, 0, 0, 0);
-            _container.BorderBrush = new SolidColorBrush(ColorHelper.ParseColor(_settings.HudBorderColor, fallbackBorder));
+            _container.BorderBrush = new SolidColorBrush(AppColorHelper.ParseColor(_settings.HudBorderColor, fallbackBorder));
             _container.BorderThickness = new Thickness(1);
         }
         else

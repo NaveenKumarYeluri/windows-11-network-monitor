@@ -2,7 +2,7 @@ using Windows.UI;
 
 namespace Windows11NetworkMonitor.Services;
 
-public static class ColorHelper
+public static class AppColorHelper
 {
     public static Color ParseColor(string? hexOrName, Color fallback)
     {
