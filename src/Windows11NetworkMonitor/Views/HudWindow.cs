@@ -58,11 +58,23 @@ public sealed class HudWindow : Window
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateRoundRectRgn(int nLeftRect, int nTopRect, int nRightRect, int nBottomRect, int nWidthEllipse, int nHeightEllipse);
+
+    [DllImport("user32.dll")]
+    private static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, bool bRedraw);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr hObject);
+
     private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
     private const int DWMWCP_DEFAULT = 0;
     private const int DWMWCP_DONOTROUND = 1;
     private const int DWMWCP_ROUND = 2;
     private const int DWMWCP_ROUNDSMALL = 3;
+
+    private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+    private const int DWMSBT_TRANSIENTWINDOW = 3; // Desktop Acrylic
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT { public int Left, Top, Right, Bottom; }
@@ -106,6 +118,7 @@ public sealed class HudWindow : Window
         Title = "HUD";
 
         ExtendsContentIntoTitleBar = true;
+        SystemBackdrop = new DesktopAcrylicBackdrop();
 
         _container = new Border
         {
@@ -170,29 +183,46 @@ public sealed class HudWindow : Window
             var margins = new MARGINS { cxLeftWidth = -1, cxRightWidth = -1, cyTopHeight = -1, cyBottomHeight = -1 };
             DwmExtendFrameIntoClientArea(hwnd, ref margins);
 
-            // 2. Set transparent composition brush as system backdrop
-            var backdropHolder = this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>();
-            if (backdropHolder != null)
-            {
-                var compositor = new Windows.UI.Composition.Compositor();
-                var transparentBrush = compositor.CreateColorBrush(Windows.UI.Color.FromArgb(0, 0, 0, 0));
-                backdropHolder.SystemBackdrop = transparentBrush;
-            }
+            // 2. Set DWM system backdrop type to Acrylic (DWMSBT_TRANSIENTWINDOW = 3)
+            int backdrop = DWMSBT_TRANSIENTWINDOW;
+            DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int));
 
             _transparencyConfigured = true;
         }
         catch { }
     }
 
-    private void UpdateCornerPreference(double radius)
+    private string _lastRegionKey = string.Empty;
+
+    private void ApplyCornerClipping(IntPtr hwnd, int width, int height, double cr, double scale)
     {
+        if (hwnd == IntPtr.Zero || width <= 0 || height <= 0) return;
+        var key = $"{width}:{height}:{cr:F1}:{scale:F2}";
+        if (key == _lastRegionKey) return;
+        _lastRegionKey = key;
+
         try
         {
-            var hwndSelf = WinRT.Interop.WindowNative.GetWindowHandle(this);
-            if (hwndSelf != IntPtr.Zero)
+            if (cr <= 0.001)
             {
-                int pref = radius <= 0.001 ? DWMWCP_DONOTROUND : (radius <= 4.0 ? DWMWCP_ROUNDSMALL : DWMWCP_ROUND);
-                DwmSetWindowAttribute(hwndSelf, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
+                SetWindowRgn(hwnd, IntPtr.Zero, true);
+                int pref = DWMWCP_DONOTROUND;
+                DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
+            }
+            else
+            {
+                int r = (int)Math.Round(cr * scale);
+                int diameter = Math.Max(2, r * 2);
+                IntPtr hRgn = CreateRoundRectRgn(0, 0, width + 1, height + 1, diameter, diameter);
+                if (hRgn != IntPtr.Zero)
+                {
+                    if (SetWindowRgn(hwnd, hRgn, true) == 0)
+                    {
+                        DeleteObject(hRgn);
+                    }
+                }
+                int pref = cr <= 4.0 ? DWMWCP_ROUNDSMALL : DWMWCP_ROUND;
+                DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
             }
         }
         catch { }
@@ -216,10 +246,9 @@ public sealed class HudWindow : Window
                 _ => FontWeights.Normal
             };
 
-            // 2. Corner radius & Border & DWM corner preference
+            // 2. Corner radius & Border
             var cr = Math.Clamp(_settings.HudCornerRadius, 0.0, 20.0);
             _container.CornerRadius = new CornerRadius(cr);
-            UpdateCornerPreference(cr);
 
             // 3. Dynamic Window Resizing (DPI-scaled physical pixels)
             var hwndSelf = WinRT.Interop.WindowNative.GetWindowHandle(this);
@@ -233,6 +262,8 @@ public sealed class HudWindow : Window
             int physicalWidth = (int)Math.Round(targetWidthDip * scale);
             int physicalHeight = (int)Math.Round(targetHeightDip * scale);
             AppWindow.Resize(new Windows.Graphics.SizeInt32(physicalWidth, physicalHeight));
+
+            ApplyCornerClipping(hwndSelf, physicalWidth, physicalHeight, cr, scale);
 
             // 4. Update Colors (force refresh)
             UpdateThemeColors(force: true);
@@ -267,13 +298,15 @@ public sealed class HudWindow : Window
         };
 
         var scheme = (_settings.HudColorScheme ?? "Auto").Trim();
+        var cr = Math.Clamp(_settings.HudCornerRadius, 0.0, 20.0);
+        _container.CornerRadius = new CornerRadius(cr);
+
         var key = $"{mode}:{resolved}:{scheme}:{_settings.HudTextColor}:{_settings.HudDownColor}:{_settings.HudUpColor}:{_settings.HudBgColor}:{_settings.HudBgOpacity}:{_settings.HudCornerRadius}:{_settings.HudShowBorder}:{_settings.HudBorderColor}";
         if (!force && key == _lastThemeKey) return;
         _lastThemeKey = key;
 
         Windows.UI.Color defaultText = isDark ? Colors.White : Colors.Black;
         Windows.UI.Color defaultBg = isDark ? Colors.Black : Colors.White;
-        double defaultOpacity = isDark ? 0.70 : 0.85;
 
         Windows.UI.Color textColor;
         Windows.UI.Color downColor;
@@ -300,35 +333,30 @@ public sealed class HudWindow : Window
                     downColor = AppColorHelper.ParseColor("#0284C7", Colors.Blue);
                     upColor = AppColorHelper.ParseColor("#16A34A", Colors.Green);
                     bgColor = Colors.White;
-                    if (_settings.HudBgOpacity == 0.75) opacity = 0.85;
                     break;
                 case "frostwhite":
                     textColor = AppColorHelper.ParseColor("#0F172A", Colors.Black);
                     downColor = AppColorHelper.ParseColor("#0284C7", Colors.Blue);
                     upColor = AppColorHelper.ParseColor("#0D9488", Colors.Teal);
                     bgColor = AppColorHelper.ParseColor("#F8FAFC", Colors.White);
-                    if (_settings.HudBgOpacity == 0.75) opacity = 0.70;
                     break;
                 case "arcticwhite":
                     textColor = AppColorHelper.ParseColor("#334155", Colors.Black);
                     downColor = AppColorHelper.ParseColor("#2563EB", Colors.Blue);
                     upColor = AppColorHelper.ParseColor("#7C3AED", Colors.Purple);
                     bgColor = Colors.White;
-                    if (_settings.HudBgOpacity == 0.75) opacity = 0.90;
                     break;
                 case "pearllight":
                     textColor = AppColorHelper.ParseColor("#27272A", Colors.Black);
                     downColor = AppColorHelper.ParseColor("#0EA5E9", Colors.Blue);
                     upColor = AppColorHelper.ParseColor("#10B981", Colors.Green);
                     bgColor = AppColorHelper.ParseColor("#F4F4F5", Colors.White);
-                    if (_settings.HudBgOpacity == 0.75) opacity = 0.80;
                     break;
                 case "whitecard":
                     textColor = AppColorHelper.ParseColor("#111827", Colors.Black);
                     downColor = AppColorHelper.ParseColor("#059669", Colors.Green);
                     upColor = AppColorHelper.ParseColor("#D97706", Colors.Orange);
                     bgColor = Colors.White;
-                    if (_settings.HudBgOpacity == 0.75) opacity = 0.95;
                     break;
                 case "cyan":
                 case "cyberpunk cyan":
@@ -370,7 +398,6 @@ public sealed class HudWindow : Window
                     downColor = defaultText;
                     upColor = defaultText;
                     bgColor = defaultBg;
-                    if (_settings.HudBgOpacity == 0.75) opacity = defaultOpacity;
                     break;
             }
         }
@@ -445,6 +472,11 @@ public sealed class HudWindow : Window
                 SetWindowLong(hwndSelf, GWL_EXSTYLE, ex | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
                 SetWindowPos(hwndSelf, HWND_TOPMOST, 0, 0, 0, 0,
                     SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
+                var cr = Math.Clamp(_settings.HudCornerRadius, 0.0, 20.0);
+                var dpi = GetDpiForWindow(hwndSelf);
+                var scale = dpi <= 0 ? 1.0 : dpi / 96.0;
+                ApplyCornerClipping(hwndSelf, AppWindow.Size.Width, AppWindow.Size.Height, cr, scale);
             }
             TaskbarHudPosition.Dock(AppWindow, hwndSelf, _settings.HudDock, _settings.HudOffsetX, _settings.HudOffsetY);
             UpdateThemeColors();
