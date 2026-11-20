@@ -1,9 +1,5 @@
 name: Build
 
-# Silence Node.js 20 deprecation - force actions to run on Node.js 24
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 on:
   push:
     branches: [ main, master ]
@@ -20,15 +16,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
 
       - name: Setup MSBuild (WinUI XAML compiler needs full-framework MSBuild, not Core MSBuild)
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Verify SDK (must be 8.x via global.json)
         run: |
@@ -58,7 +54,7 @@ jobs:
         run: Get-ChildItem -Recurse src/Windows11NetworkMonitor/publish -ErrorAction SilentlyContinue | Format-Table FullName
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Windows11NetworkMonitor-${{ matrix.rid }}-${{ github.sha }}
           path: src/Windows11NetworkMonitor/publish/

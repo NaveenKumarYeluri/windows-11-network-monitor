@@ -1,6 +1,20 @@
 # Roadmap
 
 ## Shipped
+### v1.6.0 (via GitHub Releases — folder zip)
+- [x] HUD Customizations (Appearance & Placement):
+      - Custom typography: font family selection (Segoe UI, Segoe UI Variable, Cascadia Code, Consolas, Bahnschrift, Arial, Calibri, Lucida Console, or custom), font size (8–24 pt), and font weight (Normal, SemiBold, Bold)
+      - Dynamic window sizing based on font size and format to ensure zero clipping
+      - Expanded dock placement options: Bottom (Taskbar near tray clock), Bottom-Left, Bottom-Center, Top (Screen top center), Top-Left, Top-Right, Left, Right + horizontal and vertical offset fine-tuning (±1000 DIPs)
+      - Color schemes & presets: Auto (Follows Theme/System), Cyberpunk Cyan, Matrix Green, Neon Amber, Electric Violet, Pure White, and Custom
+      - Independent download/upload speed colors, text color, and background color customization (hex codes)
+      - Background opacity control (0% transparent floating text to 100% solid)
+      - Corner radius adjustment (sharp 0px to smooth pill 20px) and subtle border styling
+      - Compact speed format option (e.g. `↓12M ↑1.5M`)
+      - Interactive live HUD preview card in Settings window with real-time updates and instant live application on Save
+- [x] Auto-hide HUD overlay when foreground window is in fullscreen mode (gaming / presentation mode)
+- [x] GitHub Actions workflow modernization: migrated all actions to native Node.js 24 runtime (`actions/checkout@v5`, `actions/setup-dotnet@v6`, `microsoft/setup-msbuild@v3`, `softprops/action-gh-release@v3`, `actions/upload-artifact@v7`), eliminating Node 20 deprecation and forced-runtime warnings.
+
 ### v1.5.1 (via GitHub Releases — folder zip)
 - [x] Security & interop hardening:
       - Quoted executable path in Run registry key (CWE-428 mitigation)

@@ -1,5 +1,11 @@
+using Microsoft.UI;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
+using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
+using Windows.UI.Text;
 using Windows11NetworkMonitor.Models;
 using Windows11NetworkMonitor.Services;
 
@@ -11,20 +17,35 @@ public sealed partial class SettingsWindow : Window
     private readonly IReadOnlyList<NetworkAdapterInfo> _adapters;
     private readonly SettingsService _store = new();
     private readonly HistoryStore _history;
+    private readonly Action? _onSettingsSaved;
 
-    public SettingsWindow(AppSettings settings, IReadOnlyList<NetworkAdapterInfo> adapters, HistoryStore history)
+    private readonly Run _previewDownRun = new() { Text = "↓ 24.5 MB/s" };
+    private readonly Run _previewSpacerRun = new() { Text = "  " };
+    private readonly Run _previewUpRun = new() { Text = "↑ 4.2 MB/s" };
+    private bool _loading = true;
+
+    public SettingsWindow(AppSettings settings, IReadOnlyList<NetworkAdapterInfo> adapters, HistoryStore history, Action? onSettingsSaved = null)
     {
         _settings = settings;
         _adapters = adapters;
         _history = history;
+        _onSettingsSaved = onSettingsSaved;
+
         InitializeComponent();
         Title = "Settings";
         SetWindowIcon();
-        SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
-        // Settings dialog stays Light so controls remain readable regardless of Main dark/light choice
+        SystemBackdrop = new MicaBackdrop();
         ((FrameworkElement)Content).RequestedTheme = ElementTheme.Light;
-        AppWindow.Resize(new SizeInt32(620, 640));
+        AppWindow.Resize(new SizeInt32(640, 740));
+
+        HudPreviewText.Inlines.Add(_previewDownRun);
+        HudPreviewText.Inlines.Add(_previewSpacerRun);
+        HudPreviewText.Inlines.Add(_previewUpRun);
+
         LoadValues();
+        WirePreviewEvents();
+        _loading = false;
+        UpdatePreview();
     }
 
     private void LoadValues()
@@ -54,55 +75,336 @@ public sealed partial class SettingsWindow : Window
         var theme = string.IsNullOrWhiteSpace(_settings.ThemeMode) ? (_settings.DarkMode ? "Dark" : "System") : _settings.ThemeMode;
         ThemeCombo.SelectedIndex = theme switch { "Dark" => 2, "Light" => 1, _ => 0 };
 
-        PollIntervalBox.Value = System.Math.Clamp(_settings.PollIntervalMs, 250, 5000);
-        HistoryRetentionBox.Value = System.Math.Clamp(_settings.HistoryRetentionDays, 0, 365);
+        PollIntervalBox.Value = Math.Clamp(_settings.PollIntervalMs, 250, 5000);
+        HistoryRetentionBox.Value = Math.Clamp(_settings.HistoryRetentionDays, 0, 365);
         TrackPerAppCheck.IsChecked = _settings.TrackPerApp;
         ShowHudCheck.IsChecked = _settings.ShowTaskbarHud;
         ShowGraphCheck.IsChecked = _settings.ShowGraph;
         IncludeVirtualCheck.IsChecked = _settings.IncludeVirtualAdapters;
         StartWithWindowsCheck.IsChecked = _settings.StartWithWindows;
 
+        // HUD Dock
         var dock = (_settings.HudDock ?? "Bottom").Trim();
-        HudDockCombo.SelectedIndex = dock switch { "Top" => 1, "Left" => 2, "Right" => 3, _ => 0 };
-        HudOffsetXBox.Value = System.Math.Clamp(_settings.HudOffsetX, -500, 500);
-        HudOffsetYBox.Value = System.Math.Clamp(_settings.HudOffsetY, -500, 500);
-        DailyLimitBox.Value = System.Math.Clamp(_settings.DailyLimitGB, 0, 9999);
+        HudDockCombo.SelectedIndex = dock switch
+        {
+            "Bottom-Left" => 1,
+            "Bottom-Center" => 2,
+            "Top" or "Top-Center" => 3,
+            "Top-Left" => 4,
+            "Top-Right" => 5,
+            "Left" => 6,
+            "Right" => 7,
+            _ => 0 // Bottom / Bottom-Right
+        };
+        HudOffsetXBox.Value = Math.Clamp(_settings.HudOffsetX, -1000, 1000);
+        HudOffsetYBox.Value = Math.Clamp(_settings.HudOffsetY, -1000, 1000);
 
+        // HUD Font
+        HudFontFamilyCombo.Items.Clear();
+        var fonts = new[] { "Segoe UI", "Segoe UI Variable Text", "Cascadia Code", "Consolas", "Bahnschrift", "Arial", "Calibri", "Lucida Console" };
+        foreach (var f in fonts) HudFontFamilyCombo.Items.Add(f);
+        HudFontFamilyCombo.Text = string.IsNullOrWhiteSpace(_settings.HudFontFamily) ? "Segoe UI" : _settings.HudFontFamily;
+
+        HudFontSizeBox.Value = Math.Clamp(_settings.HudFontSize, 8, 24);
+        HudFontWeightCombo.SelectedIndex = (_settings.HudFontWeight ?? "Normal").Trim().ToLowerInvariant() switch
+        {
+            "bold" => 2,
+            "semibold" => 1,
+            _ => 0
+        };
+
+        // HUD Colors
+        HudColorSchemeCombo.SelectedIndex = (_settings.HudColorScheme ?? "Auto").Trim().ToLowerInvariant() switch
+        {
+            "cyan" or "cyberpunk cyan" => 1,
+            "green" or "matrix green" => 2,
+            "amber" or "neon amber" => 3,
+            "violet" or "electric violet" => 4,
+            "white" or "pure white" => 5,
+            "custom" => 6,
+            _ => 0
+        };
+
+        HudTextColorBox.Text = _settings.HudTextColor ?? string.Empty;
+        HudDownColorBox.Text = _settings.HudDownColor ?? string.Empty;
+        HudUpColorBox.Text = _settings.HudUpColor ?? string.Empty;
+        HudBgColorBox.Text = _settings.HudBgColor ?? string.Empty;
+        HudBgOpacityBox.Value = Math.Clamp((int)Math.Round(_settings.HudBgOpacity * 100), 0, 100);
+        HudCornerRadiusBox.Value = Math.Clamp(_settings.HudCornerRadius, 0, 20);
+
+        HudCompactCheck.IsChecked = _settings.HudCompact;
+        HudShowBorderCheck.IsChecked = _settings.HudShowBorder;
+
+        DailyLimitBox.Value = Math.Clamp(_settings.DailyLimitGB, 0, 9999);
         StatusText.Text = $"Saved to {SettingsService.SettingsFilePath}";
+    }
+
+    private void WirePreviewEvents()
+    {
+        HudFontFamilyCombo.SelectionChanged += (_, _) => UpdatePreview();
+        HudFontFamilyCombo.TextSubmitted += (_, _) => UpdatePreview();
+        HudFontFamilyCombo.LostFocus += (_, _) => UpdatePreview();
+        HudFontFamilyCombo.Loaded += (_, _) =>
+        {
+            if (HudFontFamilyCombo.FindVisualChild<TextBox>() is { } fontTb)
+                fontTb.TextChanged += (_, _) => UpdatePreview();
+        };
+
+        HudFontSizeBox.ValueChanged += (_, _) => UpdatePreview();
+        HudFontWeightCombo.SelectionChanged += (_, _) => UpdatePreview();
+
+        HudColorSchemeCombo.SelectionChanged += (_, _) =>
+        {
+            if (!_loading)
+            {
+                var tag = (HudColorSchemeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString();
+                switch (tag?.ToLowerInvariant())
+                {
+                    case "cyan":
+                        HudTextColorBox.Text = "#00E5FF";
+                        HudDownColorBox.Text = "#38BDF8";
+                        HudUpColorBox.Text = "#00E5FF";
+                        HudBgColorBox.Text = "#0F172A";
+                        HudBgOpacityBox.Value = 80;
+                        break;
+                    case "green":
+                        HudTextColorBox.Text = "#00FF66";
+                        HudDownColorBox.Text = "#4ADE80";
+                        HudUpColorBox.Text = "#00FF66";
+                        HudBgColorBox.Text = "#0A0F0D";
+                        HudBgOpacityBox.Value = 80;
+                        break;
+                    case "amber":
+                        HudTextColorBox.Text = "#FFB300";
+                        HudDownColorBox.Text = "#FCD34D";
+                        HudUpColorBox.Text = "#F59E0B";
+                        HudBgColorBox.Text = "#1C1917";
+                        HudBgOpacityBox.Value = 80;
+                        break;
+                    case "violet":
+                        HudTextColorBox.Text = "#C084FC";
+                        HudDownColorBox.Text = "#A855F7";
+                        HudUpColorBox.Text = "#E879F9";
+                        HudBgColorBox.Text = "#18181B";
+                        HudBgOpacityBox.Value = 80;
+                        break;
+                    case "white":
+                        HudTextColorBox.Text = "#FFFFFF";
+                        HudDownColorBox.Text = "#FFFFFF";
+                        HudUpColorBox.Text = "#E2E8F0";
+                        HudBgColorBox.Text = "#000000";
+                        HudBgOpacityBox.Value = 70;
+                        break;
+                    case "auto":
+                        HudTextColorBox.Text = "";
+                        HudDownColorBox.Text = "";
+                        HudUpColorBox.Text = "";
+                        HudBgColorBox.Text = "";
+                        HudBgOpacityBox.Value = 75;
+                        break;
+                }
+            }
+            UpdatePreview();
+        };
+
+        HudTextColorBox.TextChanged += (_, _) => UpdatePreview();
+        HudDownColorBox.TextChanged += (_, _) => UpdatePreview();
+        HudUpColorBox.TextChanged += (_, _) => UpdatePreview();
+        HudBgColorBox.TextChanged += (_, _) => UpdatePreview();
+        HudBgOpacityBox.ValueChanged += (_, _) => UpdatePreview();
+        HudCornerRadiusBox.ValueChanged += (_, _) => UpdatePreview();
+        HudCompactCheck.Click += (_, _) => UpdatePreview();
+        HudShowBorderCheck.Click += (_, _) => UpdatePreview();
+    }
+
+    private void UpdatePreview()
+    {
+        if (_loading) return;
+
+        try
+        {
+            var fontName = string.IsNullOrWhiteSpace(HudFontFamilyCombo.Text) ? "Segoe UI" : HudFontFamilyCombo.Text.Trim();
+            HudPreviewText.FontFamily = new FontFamily(fontName);
+
+            var fs = Math.Clamp(HudFontSizeBox.Value, 8, 24);
+            HudPreviewText.FontSize = fs;
+
+            var fw = HudFontWeightCombo.SelectedIndex switch
+            {
+                2 => FontWeights.Bold,
+                1 => FontWeights.SemiBold,
+                _ => FontWeights.Normal
+            };
+            HudPreviewText.FontWeight = fw;
+
+            var isCompact = HudCompactCheck.IsChecked == true;
+            if (isCompact)
+            {
+                _previewDownRun.Text = "↓24.5M";
+                _previewSpacerRun.Text = " ";
+                _previewUpRun.Text = "↑4.2M";
+            }
+            else
+            {
+                _previewDownRun.Text = "↓ 24.5 MB/s";
+                _previewSpacerRun.Text = "  ";
+                _previewUpRun.Text = "↑ 4.2 MB/s";
+            }
+
+            var scheme = (HudColorSchemeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Auto";
+            var defaultText = Colors.White;
+            var defaultBg = ColorHelper.ParseColor("#0F172A", Colors.Black);
+
+            Windows.UI.Color textCol;
+            Windows.UI.Color downCol;
+            Windows.UI.Color upCol;
+            Windows.UI.Color bgCol;
+            double opacity = Math.Clamp(HudBgOpacityBox.Value / 100.0, 0.0, 1.0);
+
+            if (!string.IsNullOrWhiteSpace(HudTextColorBox.Text) ||
+                !string.IsNullOrWhiteSpace(HudDownColorBox.Text) ||
+                !string.IsNullOrWhiteSpace(HudUpColorBox.Text) ||
+                !string.IsNullOrWhiteSpace(HudBgColorBox.Text))
+            {
+                textCol = ColorHelper.ParseColor(HudTextColorBox.Text, defaultText);
+                downCol = string.IsNullOrWhiteSpace(HudDownColorBox.Text) ? textCol : ColorHelper.ParseColor(HudDownColorBox.Text, textCol);
+                upCol = string.IsNullOrWhiteSpace(HudUpColorBox.Text) ? textCol : ColorHelper.ParseColor(HudUpColorBox.Text, textCol);
+                bgCol = string.IsNullOrWhiteSpace(HudBgColorBox.Text) ? defaultBg : ColorHelper.ParseColor(HudBgColorBox.Text, defaultBg);
+            }
+            else
+            {
+                switch (scheme.ToLowerInvariant())
+                {
+                    case "cyan":
+                        textCol = ColorHelper.ParseColor("#00E5FF", Colors.Cyan);
+                        downCol = ColorHelper.ParseColor("#38BDF8", Colors.Cyan);
+                        upCol = ColorHelper.ParseColor("#00E5FF", Colors.Cyan);
+                        bgCol = ColorHelper.ParseColor("#0F172A", Colors.Black);
+                        break;
+                    case "green":
+                        textCol = ColorHelper.ParseColor("#00FF66", Colors.Green);
+                        downCol = ColorHelper.ParseColor("#4ADE80", Colors.Green);
+                        upCol = ColorHelper.ParseColor("#00FF66", Colors.Green);
+                        bgCol = ColorHelper.ParseColor("#0A0F0D", Colors.Black);
+                        break;
+                    case "amber":
+                        textCol = ColorHelper.ParseColor("#FFB300", Colors.Orange);
+                        downCol = ColorHelper.ParseColor("#FCD34D", Colors.Orange);
+                        upCol = ColorHelper.ParseColor("#F59E0B", Colors.Orange);
+                        bgCol = ColorHelper.ParseColor("#1C1917", Colors.Black);
+                        break;
+                    case "violet":
+                        textCol = ColorHelper.ParseColor("#C084FC", Colors.Purple);
+                        downCol = ColorHelper.ParseColor("#A855F7", Colors.Purple);
+                        upCol = ColorHelper.ParseColor("#E879F9", Colors.Purple);
+                        bgCol = ColorHelper.ParseColor("#18181B", Colors.Black);
+                        break;
+                    case "white":
+                        textCol = Colors.White;
+                        downCol = Colors.White;
+                        upCol = ColorHelper.ParseColor("#E2E8F0", Colors.White);
+                        bgCol = Colors.Black;
+                        break;
+                    default: // Auto
+                        textCol = defaultText;
+                        downCol = defaultText;
+                        upCol = defaultText;
+                        bgCol = defaultBg;
+                        break;
+                }
+            }
+
+            if (opacity <= 0.001)
+            {
+                HudPreviewBorder.Background = new SolidColorBrush(Colors.Transparent);
+            }
+            else
+            {
+                HudPreviewBorder.Background = new SolidColorBrush(bgCol) { Opacity = opacity };
+            }
+
+            _previewDownRun.Foreground = new SolidColorBrush(downCol);
+            _previewUpRun.Foreground = new SolidColorBrush(upCol);
+            _previewSpacerRun.Foreground = new SolidColorBrush(textCol);
+
+            var cr = Math.Clamp(HudCornerRadiusBox.Value, 0, 20);
+            HudPreviewBorder.CornerRadius = new CornerRadius(cr);
+
+            if (HudShowBorderCheck.IsChecked == true)
+            {
+                HudPreviewBorder.BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(90, 255, 255, 255));
+                HudPreviewBorder.BorderThickness = new Thickness(1);
+            }
+            else
+            {
+                HudPreviewBorder.BorderBrush = null;
+                HudPreviewBorder.BorderThickness = new Thickness(0);
+            }
+        }
+        catch { }
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        // Preserve the scroll position: Save re-writes many control values, and any
-        // resulting focus/layout change can otherwise scroll the page.
         var savedOffset = PageScroll.VerticalOffset;
 
         var selected = AdapterModeCombo.Text?.Trim();
         if (string.IsNullOrWhiteSpace(selected) && AdapterModeCombo.SelectedItem is string s)
             selected = s.Trim();
         _settings.AdapterMode = string.IsNullOrWhiteSpace(selected) ? "Auto" : selected!;
-        // Preserve canonical casing for Auto/Combined so polling matches regardless of typing case
         if (string.Equals(_settings.AdapterMode, "auto", StringComparison.OrdinalIgnoreCase)) _settings.AdapterMode = "Auto";
         if (string.Equals(_settings.AdapterMode, "combined", StringComparison.OrdinalIgnoreCase)) _settings.AdapterMode = "Combined";
 
         var interval = (int)Math.Round(PollIntervalBox.Value);
-        _settings.PollIntervalMs = System.Math.Clamp(interval, 250, 5000);
-        _settings.HistoryRetentionDays = System.Math.Clamp((int)Math.Round(HistoryRetentionBox.Value), 0, 365);
+        _settings.PollIntervalMs = Math.Clamp(interval, 250, 5000);
+        _settings.HistoryRetentionDays = Math.Clamp((int)Math.Round(HistoryRetentionBox.Value), 0, 365);
         _settings.TrackPerApp = TrackPerAppCheck.IsChecked == true;
         _settings.ShowTaskbarHud = ShowHudCheck.IsChecked == true;
         _settings.ShowGraph = ShowGraphCheck.IsChecked == true;
         _settings.IncludeVirtualAdapters = IncludeVirtualCheck.IsChecked == true;
         _settings.StartWithWindows = StartWithWindowsCheck.IsChecked == true;
 
-        _settings.HudDock = HudDockCombo.SelectedIndex switch { 1 => "Top", 2 => "Left", 3 => "Right", _ => "Bottom" };
-        _settings.HudOffsetX = System.Math.Clamp((int)System.Math.Round(HudOffsetXBox.Value), -500, 500);
-        _settings.HudOffsetY = System.Math.Clamp((int)System.Math.Round(HudOffsetYBox.Value), -500, 500);
+        // HUD Dock
+        _settings.HudDock = HudDockCombo.SelectedIndex switch
+        {
+            1 => "Bottom-Left",
+            2 => "Bottom-Center",
+            3 => "Top",
+            4 => "Top-Left",
+            5 => "Top-Right",
+            6 => "Left",
+            7 => "Right",
+            _ => "Bottom"
+        };
+        _settings.HudOffsetX = Math.Clamp((int)Math.Round(HudOffsetXBox.Value), -1000, 1000);
+        _settings.HudOffsetY = Math.Clamp((int)Math.Round(HudOffsetYBox.Value), -1000, 1000);
 
-        var newLimit = System.Math.Clamp(System.Math.Round(DailyLimitBox.Value, 2), 0, 9999);
+        // HUD Font
+        var chosenFont = HudFontFamilyCombo.Text?.Trim();
+        _settings.HudFontFamily = string.IsNullOrWhiteSpace(chosenFont) ? "Segoe UI" : chosenFont;
+        _settings.HudFontSize = Math.Clamp(HudFontSizeBox.Value, 8, 24);
+        _settings.HudFontWeight = HudFontWeightCombo.SelectedIndex switch
+        {
+            2 => "Bold",
+            1 => "SemiBold",
+            _ => "Normal"
+        };
+
+        // HUD Colors & Styles
+        _settings.HudColorScheme = (HudColorSchemeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Auto";
+        _settings.HudTextColor = HudTextColorBox.Text?.Trim() ?? string.Empty;
+        _settings.HudDownColor = HudDownColorBox.Text?.Trim() ?? string.Empty;
+        _settings.HudUpColor = HudUpColorBox.Text?.Trim() ?? string.Empty;
+        _settings.HudBgColor = HudBgColorBox.Text?.Trim() ?? string.Empty;
+        _settings.HudBgOpacity = Math.Clamp(HudBgOpacityBox.Value / 100.0, 0.0, 1.0);
+        _settings.HudCornerRadius = Math.Clamp(HudCornerRadiusBox.Value, 0, 20);
+        _settings.HudCompact = HudCompactCheck.IsChecked == true;
+        _settings.HudShowBorder = HudShowBorderCheck.IsChecked == true;
+
+        var newLimit = Math.Clamp(Math.Round(DailyLimitBox.Value, 2), 0, 9999);
         if (newLimit != _settings.DailyLimitGB)
         {
             _settings.DailyLimitGB = newLimit;
-            // Raising/lowering the limit re-arms the alerts from the current usage.
             _settings.DailyAlertStage = 0;
         }
         _settings.ThemeMode = ThemeCombo.SelectedIndex switch { 1 => "Light", 2 => "Dark", _ => "System" };
@@ -111,11 +413,10 @@ public sealed partial class SettingsWindow : Window
         _store.Save(_settings);
         _store.ApplyStartWithWindows(_settings.StartWithWindows);
         _history.Prune(_settings.HistoryRetentionDays);
-        // Keep Settings dialog Light — MainWindow picks up ThemeMode on its next tick
-        StatusText.Text = "Saved. Adapter mode applies immediately; poll interval takes effect after restart.";
-        // Do NOT move programmatic focus here: focusing AdapterModeCombo (top of the
-        // page) makes the ScrollViewer scroll the focused element into view, which
-        // yanked the page back to the top after every Save.
+
+        _onSettingsSaved?.Invoke();
+
+        StatusText.Text = "Saved. HUD customizations applied immediately; adapter mode applies immediately.";
         PageScroll.ChangeView(null, savedOffset, null, disableAnimation: true);
     }
 
@@ -123,7 +424,6 @@ public sealed partial class SettingsWindow : Window
     {
         try
         {
-            // Flush any current unwritten deltas to disk and export live rows.
             _history.Save();
             var rows = _history.ExportRows();
             if (rows.Count == 0)
@@ -138,7 +438,6 @@ public sealed partial class SettingsWindow : Window
             Directory.CreateDirectory(dir);
             var path = Path.Combine(dir, $"usage-history-{DateTime.Now:yyyy-MM-dd_HHmmss}.csv");
 
-            // UTF-8 BOM so Excel opens it without mojibake.
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("Type,Date,App,DownloadBytes,UploadBytes");
             foreach (var r in rows)
@@ -161,7 +460,7 @@ public sealed partial class SettingsWindow : Window
                     UseShellExecute = true
                 });
             }
-            catch { } // opening Explorer is a convenience, not a requirement
+            catch { }
         }
         catch (Exception ex)
         {
@@ -173,7 +472,6 @@ public sealed partial class SettingsWindow : Window
     {
         if (string.IsNullOrEmpty(value)) return string.Empty;
 
-        // Prevent CSV Formula Injection (CWE-1236): prefix formula triggers with a single quote
         var trimmed = value.TrimStart();
         if (trimmed.Length > 0 && (trimmed[0] == '=' || trimmed[0] == '+' || trimmed[0] == '-' || trimmed[0] == '@' || trimmed[0] == '\t' || trimmed[0] == '\r'))
         {
@@ -198,5 +496,21 @@ public sealed partial class SettingsWindow : Window
             if (System.IO.File.Exists(path)) AppWindow.SetIcon(path);
         }
         catch { }
+    }
+}
+
+internal static class VisualTreeHelperExtensions
+{
+    public static T? FindVisualChild<T>(this DependencyObject parent) where T : DependencyObject
+    {
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T typed) return typed;
+            var sub = FindVisualChild<T>(child);
+            if (sub != null) return sub;
+        }
+        return null;
     }
 }

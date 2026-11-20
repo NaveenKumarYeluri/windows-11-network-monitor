@@ -9,6 +9,7 @@
 
             <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold" />
 
+            <!-- General Settings -->
             <StackPanel Spacing="6">
                 <TextBlock Text="Adapter mode" FontWeight="SemiBold" />
                 <ComboBox x:Name="AdapterModeCombo" PlaceholderText="Auto" IsEditable="True" MinWidth="280" HorizontalAlignment="Stretch" />
@@ -29,19 +30,101 @@
                 </ComboBox>
             </StackPanel>
 
-            <StackPanel Spacing="6">
-                <TextBlock Text="Taskbar HUD dock" FontWeight="SemiBold" />
-                <ComboBox x:Name="HudDockCombo" MinWidth="280" HorizontalAlignment="Stretch">
-                    <ComboBoxItem Content="Bottom (end near system tray)" Tag="Bottom" />
-                    <ComboBoxItem Content="Top" Tag="Top" />
-                    <ComboBoxItem Content="Left" Tag="Left" />
-                    <ComboBoxItem Content="Right" Tag="Right" />
-                </ComboBox>
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <NumberBox x:Name="HudOffsetXBox" Header="Horizontal offset (DIP, ±)" Minimum="-500" Maximum="500" SpinButtonPlacementMode="Inline" MinWidth="150" />
-                    <NumberBox x:Name="HudOffsetYBox" Header="Vertical offset (DIP, ±)" Minimum="-500" Maximum="500" SpinButtonPlacementMode="Inline" MinWidth="150" />
+            <!-- Taskbar HUD Customization -->
+            <StackPanel Spacing="10">
+                <TextBlock Text="Taskbar / Desktop HUD" FontSize="18" FontWeight="SemiBold" Margin="0,10,0,0" />
+                <CheckBox x:Name="ShowHudCheck" Content="Show HUD overlay" />
+
+                <!-- Placement & Alignment -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="HUD placement" FontWeight="SemiBold" />
+                    <ComboBox x:Name="HudDockCombo" MinWidth="280" HorizontalAlignment="Stretch">
+                        <ComboBoxItem Content="Bottom (Taskbar near tray clock)" Tag="Bottom" />
+                        <ComboBoxItem Content="Bottom-Left (Taskbar start)" Tag="Bottom-Left" />
+                        <ComboBoxItem Content="Bottom-Center (Taskbar center)" Tag="Bottom-Center" />
+                        <ComboBoxItem Content="Top (Screen top center)" Tag="Top" />
+                        <ComboBoxItem Content="Top-Left (Screen top left)" Tag="Top-Left" />
+                        <ComboBoxItem Content="Top-Right (Screen top right)" Tag="Top-Right" />
+                        <ComboBoxItem Content="Left (Screen left edge, centered)" Tag="Left" />
+                        <ComboBoxItem Content="Right (Screen right edge, centered)" Tag="Right" />
+                    </ComboBox>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <NumberBox x:Name="HudOffsetXBox" Header="Horizontal offset (DIP, ±)" Minimum="-1000" Maximum="1000" SpinButtonPlacementMode="Inline" MinWidth="150" />
+                        <NumberBox x:Name="HudOffsetYBox" Header="Vertical offset (DIP, ±)" Minimum="-1000" Maximum="1000" SpinButtonPlacementMode="Inline" MinWidth="150" />
+                    </StackPanel>
+                    <TextBlock Text="Offsets (±1000 DIP, DPI-scaled) fine-tune the position and apply the moment you Save." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
                 </StackPanel>
-                <TextBlock Text="Bottom = over the taskbar, just left of the clock and the ^ tray arrow (their actual width is measured, so they are never covered). Top = top edge of the screen. Left / Right = mid-height of the screen sides. Offsets (±500 DIP, DPI-scaled) fine-tune the position and apply the moment you Save — no restart." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
+
+                <!-- Font Customizations -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="HUD Font" FontWeight="SemiBold" />
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox x:Name="HudFontFamilyCombo" Header="Font Family" IsEditable="True" HorizontalAlignment="Stretch" />
+                        <NumberBox x:Name="HudFontSizeBox" Header="Size (pt)" Grid.Column="1" Minimum="8" Maximum="24" SpinButtonPlacementMode="Inline" HorizontalAlignment="Stretch" />
+                        <ComboBox x:Name="HudFontWeightCombo" Header="Weight" Grid.Column="2" HorizontalAlignment="Stretch">
+                            <ComboBoxItem Content="Normal" Tag="Normal" />
+                            <ComboBoxItem Content="SemiBold" Tag="SemiBold" />
+                            <ComboBoxItem Content="Bold" Tag="Bold" />
+                        </ComboBox>
+                    </Grid>
+                </StackPanel>
+
+                <!-- Color & Theme Presets -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="HUD Colors &amp; Style" FontWeight="SemiBold" />
+                    <ComboBox x:Name="HudColorSchemeCombo" Header="Color Scheme Preset" MinWidth="280" HorizontalAlignment="Stretch">
+                        <ComboBoxItem Content="Auto (Follows Theme / System)" Tag="Auto" />
+                        <ComboBoxItem Content="Cyberpunk Cyan (#00E5FF)" Tag="Cyan" />
+                        <ComboBoxItem Content="Matrix Green (#00FF66)" Tag="Green" />
+                        <ComboBoxItem Content="Neon Amber (#FFB300)" Tag="Amber" />
+                        <ComboBoxItem Content="Electric Violet (#C084FC)" Tag="Violet" />
+                        <ComboBoxItem Content="Pure White (#FFFFFF)" Tag="White" />
+                        <ComboBoxItem Content="Custom" Tag="Custom" />
+                    </ComboBox>
+
+                    <Grid ColumnSpacing="12" x:Name="HudCustomColorsGrid">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="HudTextColorBox" Header="Text Color (Hex)" PlaceholderText="#FFFFFF" />
+                        <TextBox x:Name="HudDownColorBox" Header="Download (Hex)" PlaceholderText="#38BDF8" Grid.Column="1" />
+                        <TextBox x:Name="HudUpColorBox" Header="Upload (Hex)" PlaceholderText="#4ADE80" Grid.Column="2" />
+                    </Grid>
+
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="HudBgColorBox" Header="Background (Hex)" PlaceholderText="#000000" />
+                        <NumberBox x:Name="HudBgOpacityBox" Header="Opacity (%)" Grid.Column="1" Minimum="0" Maximum="100" SpinButtonPlacementMode="Inline" />
+                        <NumberBox x:Name="HudCornerRadiusBox" Header="Corner Radius" Grid.Column="2" Minimum="0" Maximum="20" SpinButtonPlacementMode="Inline" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Compact format & Border options -->
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <CheckBox x:Name="HudCompactCheck" Content="Compact format (e.g. ↓12M ↑1.5M)" />
+                    <CheckBox x:Name="HudShowBorderCheck" Content="Show subtle border" />
+                </StackPanel>
+
+                <!-- Live Preview Card -->
+                <StackPanel Spacing="6" Margin="0,4,0,0">
+                    <TextBlock Text="Live HUD Preview" FontSize="12" Opacity="0.7" FontWeight="SemiBold" />
+                    <Border Background="#2B2D30" CornerRadius="8" Padding="16" HorizontalAlignment="Stretch">
+                        <Border x:Name="HudPreviewBorder" HorizontalAlignment="Center" Padding="8,4,8,4">
+                            <TextBlock x:Name="HudPreviewText" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </Border>
+                </StackPanel>
             </StackPanel>
 
             <StackPanel Spacing="6">
@@ -56,7 +139,6 @@
                 <TextBlock Text="Warn via a tray notification when daily usage (download + upload combined) reaches 90% of the limit, and again at the limit. 0 = off. Applies on the next tick — no restart." Opacity="0.7" FontSize="12" TextWrapping="Wrap" />
             </StackPanel>
 
-            <CheckBox x:Name="ShowHudCheck" Content="Show taskbar HUD" />
             <CheckBox x:Name="ShowGraphCheck" Content="Show graph" />
             <CheckBox x:Name="TrackPerAppCheck" Content="Track per-app usage (estimated)" />
             <CheckBox x:Name="IncludeVirtualCheck" Content="Include virtual adapters (VPN / VMware)" />

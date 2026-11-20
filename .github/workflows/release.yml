@@ -1,8 +1,5 @@
 name: Release
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 on:
   push:
     tags: [ 'v*.*.*' ]
@@ -14,15 +11,15 @@ jobs:
   release:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
 
       - name: Setup MSBuild (WinUI XAML compiler needs full-framework MSBuild)
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Restore
         run: dotnet restore Windows11NetworkMonitor.sln
@@ -36,7 +33,7 @@ jobs:
         run: Compress-Archive -Path ./src/Windows11NetworkMonitor/publish/* -DestinationPath ./windows-11-network-monitor-${{ github.ref_name }}-win-x64.zip -Force
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ./windows-11-network-monitor-${{ github.ref_name }}-win-x64.zip
           generate_release_notes: true

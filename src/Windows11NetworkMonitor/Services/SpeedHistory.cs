@@ -65,6 +65,14 @@ public static class SpeedFormatter
         return $"{bytesPerSecond / (1024L * 1024 * 1024):F2} GB/s";
     }
 
+    public static string FormatCompact(double bytesPerSecond)
+    {
+        if (bytesPerSecond < 1024) return $"{bytesPerSecond:F0}B";
+        if (bytesPerSecond < 1024 * 1024) return $"{bytesPerSecond / 1024:F0}K";
+        if (bytesPerSecond < 1024 * 1024 * 1024) return $"{bytesPerSecond / (1024 * 1024):F1}M";
+        return $"{bytesPerSecond / (1024L * 1024 * 1024):F1}G";
+    }
+
     public static string FormatBytes(long bytes)
     {
         if (bytes < 1024) return $"{bytes} B";

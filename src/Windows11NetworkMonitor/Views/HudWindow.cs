@@ -1,15 +1,18 @@
 using System.Runtime.InteropServices;
 using Microsoft.UI;
+using Microsoft.UI.Text;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
+using Windows.UI.Text;
 using Windows11NetworkMonitor.Models;
 using Windows11NetworkMonitor.Services;
 
 namespace Windows11NetworkMonitor.Views;
 
-/// <summary>Transparent floating HUD that docks onto the Windows 11 taskbar.</summary>
+/// <summary>Transparent floating HUD that docks onto the Windows 11 taskbar or screen edges.</summary>
 public sealed class HudWindow : Window
 {
     [DllImport("user32.dll")]
@@ -56,32 +59,54 @@ public sealed class HudWindow : Window
     private const uint SWP_NOMOVE = 0x0002, SWP_NOSIZE = 0x0001, SWP_SHOWWINDOW = 0x0040,
                        SWP_NOACTIVATE = 0x0010;
 
+    private readonly MainWindow _parent;
     private readonly AppSettings _settings;
+    private readonly Border _container;
     private readonly TextBlock _speedText;
+    private readonly Run _pauseRun;
+    private readonly Run _downRun;
+    private readonly Run _spacerRun;
+    private readonly Run _upRun;
     private readonly DispatcherTimer _repositionTimer;
+
+    private double _lastDownBps;
+    private double _lastUpBps;
+    private bool _lastPaused;
 
     public HudWindow(MainWindow parent, AppSettings settings)
     {
+        _parent = parent;
         _settings = settings;
         Title = "HUD";
 
-        var root = new Grid
+        _container = new Border
         {
-            Padding = new Thickness(6, 2, 6, 2),
-            ColumnSpacing = 8
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Padding = new Thickness(6, 2, 6, 2)
         };
-        root.Tapped += (_, _) => parent.ShowFromTray();
+        _container.Tapped += (_, _) => _parent.ShowFromTray();
+
         _speedText = new TextBlock
         {
-            Text = "↓ 0 B/s  ↑ 0 B/s",
-            FontSize = 11,
-            FontFamily = new FontFamily("Segoe UI")
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextAlignment = TextAlignment.Center
         };
-        root.Children.Add(_speedText);
-        Content = root;
-        UpdateThemeColors();
 
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(150, 28));
+        _pauseRun = new Run();
+        _downRun = new Run { Text = "↓ 0 B/s" };
+        _spacerRun = new Run { Text = "  " };
+        _upRun = new Run { Text = "↑ 0 B/s" };
+
+        _speedText.Inlines.Add(_pauseRun);
+        _speedText.Inlines.Add(_downRun);
+        _speedText.Inlines.Add(_spacerRun);
+        _speedText.Inlines.Add(_upRun);
+
+        _container.Child = _speedText;
+        Content = _container;
+
         AppWindow.SetPresenter(OverlappedPresenter.Create());
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -91,6 +116,8 @@ public sealed class HudWindow : Window
             presenter.SetBorderAndTitleBar(false, false);
         }
 
+        ApplySettings();
+
         _repositionTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _repositionTimer.Tick += (_, _) => Reposition();
         _repositionTimer.Start();
@@ -98,33 +125,165 @@ public sealed class HudWindow : Window
         Activated += (_, _) => Reposition();
     }
 
+    public void ApplySettings()
+    {
+        try
+        {
+            // 1. Font Family & Size & Weight
+            var fontName = string.IsNullOrWhiteSpace(_settings.HudFontFamily) ? "Segoe UI" : _settings.HudFontFamily.Trim();
+            _speedText.FontFamily = new FontFamily(fontName);
+            var fs = Math.Clamp(_settings.HudFontSize, 8.0, 24.0);
+            _speedText.FontSize = fs;
+            _speedText.FontWeight = (_settings.HudFontWeight ?? "Normal").Trim().ToLowerInvariant() switch
+            {
+                "bold" => FontWeights.Bold,
+                "semibold" => FontWeights.SemiBold,
+                _ => FontWeights.Normal
+            };
+
+            // 2. Corner radius & Border
+            _container.CornerRadius = new CornerRadius(Math.Clamp(_settings.HudCornerRadius, 0.0, 20.0));
+
+            // 3. Dynamic Window Resizing
+            int baseWidth = _settings.HudCompact ? 115 : 158;
+            int targetWidth = (int)Math.Max(110, Math.Round(baseWidth * (fs / 11.0)));
+            int targetHeight = (int)Math.Max(26, Math.Round(28 * (fs / 11.0)));
+            AppWindow.Resize(new Windows.Graphics.SizeInt32(targetWidth, targetHeight));
+
+            // 4. Update Colors
+            UpdateThemeColors(force: true);
+
+            // 5. Update Speed Text Format immediately
+            RenderSpeedText(_lastDownBps, _lastUpBps, _lastPaused);
+
+            // 6. Reposition to new docked coordinate
+            Reposition();
+        }
+        catch { }
+    }
+
     private string _lastThemeKey = string.Empty;
 
-    private void UpdateThemeColors()
+    private void UpdateThemeColors(bool force = false)
     {
-        var root = (Grid)Content;
         var mode = string.IsNullOrWhiteSpace(_settings.ThemeMode) ? (_settings.DarkMode ? "Dark" : "System") : _settings.ThemeMode;
-        root.RequestedTheme = mode switch
+        _container.RequestedTheme = mode switch
         {
             "Dark" => ElementTheme.Dark,
             "Light" => ElementTheme.Light,
             _ => ElementTheme.Default
         };
 
-        // Colors: Light = white bg / dark text, Dark = dark bg / white text, System follows ActualTheme
-        var resolved = root.ActualTheme;
+        var resolved = _container.ActualTheme;
         var isDark = mode switch
         {
             "Dark" => true,
             "Light" => false,
             _ => resolved == ElementTheme.Dark
         };
-        var key = $"{mode}:{resolved}";
-        if (key == _lastThemeKey) return; // nothing changed → don't churn brushes
+
+        var scheme = (_settings.HudColorScheme ?? "Auto").Trim();
+        var key = $"{mode}:{resolved}:{scheme}:{_settings.HudTextColor}:{_settings.HudDownColor}:{_settings.HudUpColor}:{_settings.HudBgColor}:{_settings.HudBgOpacity}:{_settings.HudShowBorder}:{_settings.HudBorderColor}";
+        if (!force && key == _lastThemeKey) return;
         _lastThemeKey = key;
 
-        root.Background = new SolidColorBrush(isDark ? Colors.Black : Colors.White) { Opacity = isDark ? 0.7 : 0.85 };
-        _speedText.Foreground = new SolidColorBrush(isDark ? Colors.White : Colors.Black);
+        Windows.UI.Color defaultText = isDark ? Colors.White : Colors.Black;
+        Windows.UI.Color defaultBg = isDark ? Colors.Black : Colors.White;
+        double defaultOpacity = isDark ? 0.70 : 0.85;
+
+        Windows.UI.Color textColor;
+        Windows.UI.Color downColor;
+        Windows.UI.Color upColor;
+        Windows.UI.Color bgColor;
+        double opacity = Math.Clamp(_settings.HudBgOpacity, 0.0, 1.0);
+
+        if (!string.IsNullOrWhiteSpace(_settings.HudTextColor) ||
+            !string.IsNullOrWhiteSpace(_settings.HudDownColor) ||
+            !string.IsNullOrWhiteSpace(_settings.HudUpColor) ||
+            !string.IsNullOrWhiteSpace(_settings.HudBgColor))
+        {
+            textColor = ColorHelper.ParseColor(_settings.HudTextColor, defaultText);
+            downColor = string.IsNullOrWhiteSpace(_settings.HudDownColor) ? textColor : ColorHelper.ParseColor(_settings.HudDownColor, textColor);
+            upColor = string.IsNullOrWhiteSpace(_settings.HudUpColor) ? textColor : ColorHelper.ParseColor(_settings.HudUpColor, textColor);
+            bgColor = string.IsNullOrWhiteSpace(_settings.HudBgColor) ? defaultBg : ColorHelper.ParseColor(_settings.HudBgColor, defaultBg);
+        }
+        else
+        {
+            switch (scheme.ToLowerInvariant())
+            {
+                case "cyan":
+                case "cyberpunk cyan":
+                    textColor = ColorHelper.ParseColor("#00E5FF", Colors.Cyan);
+                    downColor = ColorHelper.ParseColor("#38BDF8", Colors.Cyan);
+                    upColor = ColorHelper.ParseColor("#00E5FF", Colors.Cyan);
+                    bgColor = ColorHelper.ParseColor("#0F172A", Colors.Black);
+                    break;
+                case "green":
+                case "matrix green":
+                    textColor = ColorHelper.ParseColor("#00FF66", Colors.Green);
+                    downColor = ColorHelper.ParseColor("#4ADE80", Colors.Green);
+                    upColor = ColorHelper.ParseColor("#00FF66", Colors.Green);
+                    bgColor = ColorHelper.ParseColor("#0A0F0D", Colors.Black);
+                    break;
+                case "amber":
+                case "neon amber":
+                    textColor = ColorHelper.ParseColor("#FFB300", Colors.Orange);
+                    downColor = ColorHelper.ParseColor("#FCD34D", Colors.Orange);
+                    upColor = ColorHelper.ParseColor("#F59E0B", Colors.Orange);
+                    bgColor = ColorHelper.ParseColor("#1C1917", Colors.Black);
+                    break;
+                case "violet":
+                case "electric violet":
+                    textColor = ColorHelper.ParseColor("#C084FC", Colors.Purple);
+                    downColor = ColorHelper.ParseColor("#A855F7", Colors.Purple);
+                    upColor = ColorHelper.ParseColor("#E879F9", Colors.Purple);
+                    bgColor = ColorHelper.ParseColor("#18181B", Colors.Black);
+                    break;
+                case "white":
+                case "pure white":
+                    textColor = Colors.White;
+                    downColor = Colors.White;
+                    upColor = ColorHelper.ParseColor("#E2E8F0", Colors.White);
+                    bgColor = Colors.Black;
+                    break;
+                default: // Auto
+                    textColor = defaultText;
+                    downColor = defaultText;
+                    upColor = defaultText;
+                    bgColor = defaultBg;
+                    if (_settings.HudBgOpacity == 0.75) opacity = defaultOpacity;
+                    break;
+            }
+        }
+
+        // Apply background
+        if (opacity <= 0.001)
+        {
+            _container.Background = new SolidColorBrush(Colors.Transparent);
+        }
+        else
+        {
+            _container.Background = new SolidColorBrush(bgColor) { Opacity = opacity };
+        }
+
+        // Apply text brushes
+        _downRun.Foreground = new SolidColorBrush(downColor);
+        _upRun.Foreground = new SolidColorBrush(upColor);
+        _spacerRun.Foreground = new SolidColorBrush(textColor);
+        _pauseRun.Foreground = new SolidColorBrush(textColor);
+
+        // Apply border
+        if (_settings.HudShowBorder)
+        {
+            var fallbackBorder = isDark ? Windows.UI.Color.FromArgb(80, 255, 255, 255) : Windows.UI.Color.FromArgb(80, 0, 0, 0);
+            _container.BorderBrush = new SolidColorBrush(ColorHelper.ParseColor(_settings.HudBorderColor, fallbackBorder));
+            _container.BorderThickness = new Thickness(1);
+        }
+        else
+        {
+            _container.BorderBrush = null;
+            _container.BorderThickness = new Thickness(0);
+        }
     }
 
     private void Reposition()
@@ -163,21 +322,34 @@ public sealed class HudWindow : Window
                     SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
             }
             TaskbarHudPosition.Dock(AppWindow, hwndSelf, _settings.HudDock, _settings.HudOffsetX, _settings.HudOffsetY);
-            // Theme colors only need refresh when the resolved theme changes
-            // (twice-per-second brush churn was pointless allocation).
             UpdateThemeColors();
         }
         catch { }
     }
 
+    private void RenderSpeedText(double downBps, double upBps, bool paused)
+    {
+        var p = paused ? "⏸ " : string.Empty;
+        _pauseRun.Text = p;
+        if (_settings.HudCompact)
+        {
+            _downRun.Text = $"↓{SpeedFormatter.FormatCompact(downBps)}";
+            _spacerRun.Text = " ";
+            _upRun.Text = $"↑{SpeedFormatter.FormatCompact(upBps)}";
+        }
+        else
+        {
+            _downRun.Text = $"↓ {SpeedFormatter.Format(downBps)}";
+            _spacerRun.Text = "  ";
+            _upRun.Text = $"↑ {SpeedFormatter.Format(upBps)}";
+        }
+    }
+
     public void Update(double downBps, double upBps, bool paused = false)
     {
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            // "⏸" prefix makes the paused state obvious on the HUD; speeds keep
-            // updating so the link stays visible while tracking is paused.
-            var p = paused ? "⏸ " : string.Empty;
-            _speedText.Text = $"{p}↓ {SpeedFormatter.Format(downBps)}  ↑ {SpeedFormatter.Format(upBps)}";
-        });
+        _lastDownBps = downBps;
+        _lastUpBps = upBps;
+        _lastPaused = paused;
+        DispatcherQueue.TryEnqueue(() => RenderSpeedText(downBps, upBps, paused));
     }
 }

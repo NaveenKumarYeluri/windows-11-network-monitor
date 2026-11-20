@@ -1044,7 +1044,29 @@ public sealed partial class MainWindow : Window
     public void ShowSettings()
     {
         var adapters = _adapters.GetAdapters();
-        _settingsWin = new SettingsWindow(_settings, adapters, _historyStore);
+        _settingsWin = new SettingsWindow(_settings, adapters, _historyStore, () =>
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (_settings.ShowTaskbarHud)
+                {
+                    if (_hud is null)
+                    {
+                        _hud = new HudWindow(this, _settings);
+                        _hud.Activate();
+                    }
+                    else
+                    {
+                        _hud.ApplySettings();
+                    }
+                }
+                else
+                {
+                    _hud?.Close();
+                    _hud = null;
+                }
+            });
+        });
         _settingsWin.Closed += (_, _) => _settingsWin = null;
         _settingsWin.Activate();
         DispatcherQueue.TryEnqueue(() => _settingsWin.Activate());

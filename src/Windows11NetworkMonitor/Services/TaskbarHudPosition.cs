@@ -121,6 +121,7 @@ public static class TaskbarHudPosition
         switch (dock)
         {
             case "Top":
+            case "Top-Center":
                 if (ty <= screen.Top + 2 && th > 0)
                 {
                     // The taskbar itself is at the top edge here — use the
@@ -137,6 +138,16 @@ public static class TaskbarHudPosition
                         screen.Top + 8 + oy);
                 }
                 break;
+            case "Top-Left":
+                pos = new Windows.Graphics.PointInt32(
+                    screen.Left + 12 + ox,
+                    (ty <= screen.Top + 2 && th > 0 ? ty + Math.Max(0, (th - size.Height) / 2) : screen.Top + 8) + oy);
+                break;
+            case "Top-Right":
+                pos = new Windows.Graphics.PointInt32(
+                    screen.Right - size.Width - 12 + ox,
+                    (ty <= screen.Top + 2 && th > 0 ? ty + Math.Max(0, (th - size.Height) / 2) : screen.Top + 8) + oy);
+                break;
             case "Left":
                 // Left screen edge, centered vertically in the work area.
                 pos = new Windows.Graphics.PointInt32(
@@ -149,6 +160,18 @@ public static class TaskbarHudPosition
                     screen.Right - size.Width - 8 + ox,
                     work.Top + (work.Bottom - work.Top - size.Height) / 2 + oy);
                 break;
+            case "Bottom-Left":
+                pos = new Windows.Graphics.PointInt32(
+                    tx + 12 + ox,
+                    ty + Math.Max(0, (th - size.Height) / 2) + oy);
+                break;
+            case "Bottom-Center":
+                pos = new Windows.Graphics.PointInt32(
+                    tx + (tw - size.Width) / 2 + ox,
+                    ty + Math.Max(0, (th - size.Height) / 2) + oy);
+                break;
+            case "Bottom":
+            case "Bottom-Right":
             default: // Bottom (Windows 11 default) - over the taskbar, clear of the tray
                 pos = new Windows.Graphics.PointInt32(
                     tx + tw - size.Width - GetTrayReservePx(scale) + ox,
