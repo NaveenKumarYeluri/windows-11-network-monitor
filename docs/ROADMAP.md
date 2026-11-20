@@ -1,6 +1,13 @@
 # Roadmap
 
 ## Shipped
+### v1.6.1 (via GitHub Releases — folder zip)
+- [x] HUD Transparency & Corner Radius Rendering:
+      - Enabled native Desktop Acrylic backdrop (`DesktopAcrylicBackdrop` and DWM `DWMSBT_TRANSIENTWINDOW`) for the HUD window, allowing true glass-like transparency over the Windows 11 taskbar without black box bleed-through.
+      - Implemented physical window clipping via Win32 `SetWindowRgn` (`CreateRoundRectRgn`), dynamically scaled to monitor DPI, eliminating rectangular black corner artifacts and rendering smooth pill / rounded corners against the desktop.
+      - Removed hardcoded opacity overrides so user-specified background opacity (0–100%) is faithfully applied.
+      - Fixed CI build failure (CS0029) by aligning composition backdrop interfaces with proper `Windows.UI.Composition` types.
+
 ### v1.6.0 (via GitHub Releases — folder zip)
 - [x] HUD Customizations (Appearance & Placement):
       - Custom typography: expanded font family selection with 25+ system and monospace fonts (Segoe UI, Segoe UI Variable, Cascadia Code, Cascadia Mono, Consolas, Bahnschrift, Arial, Calibri, Verdana, Tahoma, Century Gothic, JetBrains Mono, Fira Code, or custom), font size (8–24 pt), and font weight (Normal, SemiBold, Bold)
